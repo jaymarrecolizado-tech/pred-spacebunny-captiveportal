@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Enums\AttributionMethod;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSurveyResponseRequest;
 use App\Models\Site;
@@ -51,7 +50,9 @@ class PublicApiController extends Controller
                     'municipality' => $site->municipality,
                 ],
                 'attribution' => [
-                    'method' => AttributionMethod::QrCode->value,
+                    // Same rule as the form path: never claim verified
+                    // connectivity before a validated gateway handoff exists.
+                    'method' => $site->publicAttributionMethod()->value,
                     'verified_wifi_session' => false,
                 ],
                 'policy' => $resolved->policy->value,

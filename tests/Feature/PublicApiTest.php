@@ -83,6 +83,21 @@ class PublicApiTest extends TestCase
             ->assertJsonPath('error.fields', ['answers.rating' => ['Select a rating between 1 and 5.']]);
     }
 
+    public function test_the_api_reports_the_same_attribution_as_the_form_path(): void
+    {
+        // A captive-portal site has no validated handoff yet, so the API must not
+        // claim verified attribution either.
+        [$site] = $this->activeSiteWithSurvey([
+            'integration_mode' => IntegrationMode::CaptivePortal,
+            'integration_status' => IntegrationStatus::Active,
+        ]);
+
+        $this->getJson("/api/v1/public/sites/{$site->site_code}/survey")
+            ->assertOk()
+            ->assertJsonPath('data.attribution.method', $site->publicAttributionMethod()->value)
+            ->assertJsonPath('data.attribution.verified_wifi_session', false);
+    }
+
     public function test_health_reports_availability_without_secrets(): void
     {
         $this->getJson('/api/v1/public/health')
