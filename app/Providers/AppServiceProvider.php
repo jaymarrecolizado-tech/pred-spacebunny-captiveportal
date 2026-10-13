@@ -18,6 +18,10 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('public-read', fn (Request $request) => Limit::perMinute(60)->by($request->ip()));
 
+        // FR-CAP-004: a gateway gets a budget, not the whole internet.
+        RateLimiter::for('integration', fn (Request $request) => Limit::perMinute(120)
+            ->by((string) $request->header('X-Integration-Id')));
+
         // Trust proxies for correct client IPs behind the VPS web server only.
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute(60)->by($request->user()?->id ?: $request->ip()));
     }

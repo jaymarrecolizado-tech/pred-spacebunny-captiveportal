@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Portal\PortalSessionController;
 use App\Http\Controllers\PublicSurveyController;
 use Illuminate\Support\Facades\Route;
 
@@ -19,5 +20,20 @@ Route::prefix('f/{siteCode}')->name('site.')->group(function (): void {
         ->middleware('throttle:public-submit')
         ->name('survey.store');
     Route::get('/thanks', [PublicSurveyController::class, 'thanks'])->name('thanks');
-    Route::get('/qr', [PublicSurveyController::class, 'poster'])->name('qr');
+    Route::get('/qr', [PublicSurveyController::class, 'qr'])->name('qr');
 });
+
+/*
+| Browser side of a validated captive portal session (Spec 11.2). The signed
+| token in the query string is the authorisation: no account, no cookie, and no
+| way to point one site's token at another site.
+*/
+Route::prefix('portal/session/{session}')->name('portal.')->group(function (): void {
+    Route::get('/', [PortalSessionController::class, 'show'])->name('session');
+    Route::post('/', [PortalSessionController::class, 'store'])
+        ->middleware('throttle:public-submit')
+        ->name('session.store');
+    Route::get('/thanks', [PortalSessionController::class, 'thanks'])->name('thanks');
+});
+
+Route::view('portal/unavailable', 'portal.unavailable')->name('portal.unavailable');

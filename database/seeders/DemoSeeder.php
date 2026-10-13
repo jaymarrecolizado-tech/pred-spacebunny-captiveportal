@@ -4,12 +4,14 @@ namespace Database\Seeders;
 
 use App\Enums\AssignmentPolicy;
 use App\Enums\IntegrationMode;
+use App\Enums\IntegrationState;
 use App\Enums\IntegrationStatus;
 use App\Enums\RecordStatus;
 use App\Enums\ScopeType;
 use App\Enums\SurveyStatus;
 use App\Enums\SurveyVersionStatus;
 use App\Enums\UserRole;
+use App\Models\Integration;
 use App\Models\Site;
 use App\Models\Supplier;
 use App\Models\Survey;
@@ -152,5 +154,18 @@ class DemoSeeder extends Seeder
             'policy' => AssignmentPolicy::Optional,
             'status' => 'active',
         ]);
+
+        // A test-mode integration so the gateway simulator works immediately.
+        // Its secret is generated per seed run and never printed to a shared log.
+        Integration::firstOrCreate(
+            ['site_id' => $siteA->id, 'integration_type' => 'portal_handoff'],
+            [
+                'supplier_id' => $supplierA->id,
+                'public_identifier' => Integration::generateIdentifier(),
+                'secret' => Integration::generateSecret(),
+                'status' => IntegrationState::Active,
+                'is_test_mode' => true,
+            ],
+        );
     }
 }

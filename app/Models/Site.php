@@ -142,6 +142,17 @@ class Site extends Model
     }
 
     /**
+     * Re-reads the integration's site, so a site disabled after the
+     * credentials were checked still stops new sessions (FR-CAP-008).
+     */
+    public function acceptsRequests(): bool
+    {
+        return $this->status->acceptsRequests()
+            && $this->revoked_at === null
+            && $this->site()->whereKey($this->site_id)->where('status', RecordStatus::Active->value)->exists();
+    }
+
+    /**
      * Whether this single site is inside the user's organizational scope.
      */
     public function isVisibleTo(?User $user): bool
