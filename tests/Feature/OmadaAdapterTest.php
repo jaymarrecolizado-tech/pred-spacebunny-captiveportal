@@ -186,4 +186,28 @@ class OmadaAdapterTest extends TestCase
             ->assertSee('Thank you')
             ->assertDontSee('id="count"', escape: false);
     }
+
+    public function test_the_thanks_page_redirects_after_the_countdown_when_configured(): void
+    {
+        [$site] = $this->activeSiteWithSurvey();
+        config(['portal.success_url' => 'https://e.gov.ph/']);
+
+        $this->withSession(['authorized' => true, 'reference' => 'abc12345'])
+            ->get(route('portal.omada.thanks', ['siteCode' => $site->site_code]))
+            ->assertOk()
+            ->assertSee('id="count"', escape: false)
+            ->assertSee('https://e.gov.ph/', escape: false);
+    }
+
+    public function test_the_thanks_page_has_no_redirect_when_unconfigured(): void
+    {
+        [$site] = $this->activeSiteWithSurvey();
+        config(['portal.success_url' => null]);
+
+        $this->withSession(['authorized' => true, 'reference' => 'abc12345'])
+            ->get(route('portal.omada.thanks', ['siteCode' => $site->site_code]))
+            ->assertOk()
+            ->assertSee('id="count"', escape: false)
+            ->assertDontSee('e.gov.ph');
+    }
 }

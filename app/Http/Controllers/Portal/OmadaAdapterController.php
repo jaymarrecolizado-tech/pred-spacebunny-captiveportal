@@ -114,6 +114,7 @@ class OmadaAdapterController extends Controller
             'site' => $site,
             'authorized' => session('authorized', false),
             'reference' => session('reference'),
+            'successUrl' => config('portal.success_url'),
         ]);
     }
 
