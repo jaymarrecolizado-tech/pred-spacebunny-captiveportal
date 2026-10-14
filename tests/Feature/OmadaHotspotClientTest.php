@@ -84,6 +84,32 @@ class OmadaHotspotClientTest extends TestCase
         Http::assertNotSent(fn ($request) => str_ends_with($request->url(), '/extPortal/auth'));
     }
 
+    public function test_the_grant_duration_is_milliseconds_and_32_bit_safe(): void
+    {
+        $this->configure();
+
+        Http::fake([
+            '*/hotspot/login' => Http::response(['errorCode' => 0, 'result' => ['token' => 'csrf-token']]),
+            '*/extPortal/auth' => Http::response(['errorCode' => 0]),
+        ]);
+
+        app(OmadaHotspotClient::class)->authorize($this->client());
+
+        Http::assertSent(function ($request) {
+            if (! str_ends_with($request->url(), '/extPortal/auth')) {
+                return false;
+            }
+
+            $time = $request['time'];
+
+            // 32-bit safe: microsecond-scale values overflow and the controller
+            // silently produces a grant that is born expired.
+            return $time > 0
+                && $time <= 2147483647
+                && $time === (int) config('portal.auth_duration_ms');
+        });
+    }
+
     public function test_a_rejected_authorize_returns_false(): void
     {
         $this->configure();
