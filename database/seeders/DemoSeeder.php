@@ -20,15 +20,29 @@ use App\Models\SurveyVersion;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use RuntimeException;
 
 /**
  * Sample data only — fake sites and a fake operator account, no real DICT data
  * (Plan section 7.1).
+ *
+ * This seeder creates accounts with a known password (`password`), so it must
+ * never reach a deployed environment. The guard lives here, not only in
+ * DatabaseSeeder, so a direct `--class=DemoSeeder` invocation is refused too.
+ * It throws rather than skipping quietly: a silent skip would let a deploy look
+ * successful while producing a half-configured platform.
  */
 class DemoSeeder extends Seeder
 {
     public function run(): void
     {
+        if (! app()->environment('local', 'testing')) {
+            throw new RuntimeException(
+                'Refusing to seed demo data in the "'.app()->environment().'" environment. '
+                .'DemoSeeder creates known-password accounts and is local-only.'
+            );
+        }
+
         $admin = User::updateOrCreate(
             ['email' => 'admin@example.test'],
             [

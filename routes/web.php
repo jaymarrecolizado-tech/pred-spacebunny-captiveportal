@@ -20,7 +20,7 @@ Route::prefix('f/{siteCode}')->name('site.')->group(function (): void {
         ->middleware('throttle:public-submit')
         ->name('survey.store');
     Route::get('/thanks', [PublicSurveyController::class, 'thanks'])->name('thanks');
-    Route::get('/qr', [PublicSurveyController::class, 'qr'])->name('qr');
+    Route::get('/qr', [PublicSurveyController::class, 'poster'])->name('qr');
 });
 
 /*

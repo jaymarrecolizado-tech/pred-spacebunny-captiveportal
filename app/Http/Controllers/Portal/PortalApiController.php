@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Site;
 use App\Services\Portal\PortalContractException;
 use App\Services\Portal\PortalSessionService;
-use App\Services\Portal\PortalToken;
 use App\Services\Surveys\ResolveSurvey;
+use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Context;
@@ -37,7 +37,25 @@ class PortalApiController extends Controller
         $data = $request->validate([
             'site_code' => ['nullable', 'string', 'max:64'],
             'gateway_session_ref' => ['nullable', 'string', 'max:128'],
-            'redirect_url' => ['nullable', 'string', 'max:2048'],
+            // Where the browser goes once the survey is done. Optional, but
+            // without it the user is stranded on our page instead of being
+            // returned to the gateway that still holds their session.
+            'redirect_url' => [
+                'nullable',
+                'string',
+                'max:2048',
+                // Only real http(s) URLs: this value is echoed back to the
+                // browser as a redirect, so javascript:, data: and
+                // protocol-relative targets must never survive validation.
+                'url:http,https',
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    $allowed = (array) config('portal.allowed_return_hosts', []);
+
+                    if ($allowed !== [] && ! in_array(parse_url((string) $value, PHP_URL_HOST), $allowed, true)) {
+                        $fail('That return host is not on the approved list.');
+                    }
+                },
+            ],
         ]);
 
         $site = null;
@@ -64,16 +82,16 @@ class PortalApiController extends Controller
 
         $session = $this->sessions->open($integration, $site, [
             'gateway_session_ref' => $data['gateway_session_ref'] ?? null,
+            'redirect_url' => $data['redirect_url'] ?? null,
         ]);
 
         return response()->json([
             'data' => [
                 'session_reference' => $session->id,
                 'expires_at' => $session->expires_at->toIso8601String(),
-                'survey_url' => route('portal.session', [
-                    'session' => $session->id,
-                    'token' => PortalToken::mint($session),
-                ]),
+                // Built from the configured public address, so the gateway
+                // always hands the device a link it can actually open.
+                'survey_url' => $this->sessions->handoffUrl($session),
                 'site_code' => $site->site_code,
                 'policy' => $session->integration->is_test_mode ? 'test' : 'optional',
             ],

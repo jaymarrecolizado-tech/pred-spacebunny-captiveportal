@@ -6,12 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Integration;
 use App\Models\PortalSession;
 use App\Models\Site;
-use App\Services\Portal\PortalToken;
+use App\Services\Portal\PortalSessionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
+use Illuminate\Http\Response as ViewResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 /**
  * A stand-in gateway, used to exercise the captive portal contract end to end
@@ -26,7 +27,9 @@ use Illuminate\Support\Str;
  */
 class GatewayController extends Controller
 {
-    public function index(): Response
+    public function __construct(private readonly PortalSessionService $sessions) {}
+
+    public function index(): ViewResponse
     {
         $this->guard();
 
@@ -47,16 +50,21 @@ class GatewayController extends Controller
         $data = $request->validate([
             'integration_id' => ['required', 'integer'],
             'site_code' => ['required', 'string'],
+            // Where this gateway wants the client back afterwards. Passed
+            // through unvalidated on purpose: the platform is the authority on
+            // what is acceptable, and the simulator should show its refusal.
+            'redirect_url' => ['nullable', 'string', 'max:2048'],
         ]);
 
         $integration = Integration::findOrFail($data['integration_id']);
         $site = Site::where('site_code', $data['site_code'])->firstOrFail();
 
-        $response = $this->callContract('init', $integration, [
+        $response = $this->callContract('init', $integration, array_filter([
             'site_code' => $site->site_code,
             // Stands in for the gateway's own session/MAC reference.
             'gateway_session_ref' => 'sim-'.Str::random(10),
-        ]);
+            'redirect_url' => $data['redirect_url'] ?? null,
+        ]));
 
         if ($response->getStatusCode() >= 400) {
             return back()->withInput()->withErrors([
@@ -72,7 +80,7 @@ class GatewayController extends Controller
      * Step 3: ask the platform whether the survey was completed, then apply
      * the gateway's own access policy to that answer.
      */
-    public function status(Request $request): Response
+    public function status(Request $request): ViewResponse
     {
         $this->guard();
 
@@ -103,17 +111,14 @@ class GatewayController extends Controller
      * The negative test that matters: a tampered session reference must not
      * open a survey (FR-CAP-004, Spec 9.5).
      */
-    public function tamper(Request $request): Response
+    public function tamper(Request $request): ViewResponse
     {
         $this->guard();
 
         $data = $request->validate(['session_reference' => ['required', 'uuid']]);
         $session = PortalSession::with('integration')->findOrFail($data['session_reference']);
 
-        $real = route('portal.session', [
-            'session' => $session->id,
-            'token' => PortalToken::mint($session),
-        ]);
+        $real = $this->sessions->handoffUrl($session);
 
         return response()->view('simulator.tamper', [
             'session' => $session,
@@ -125,8 +130,11 @@ class GatewayController extends Controller
      * Call our own contract endpoint through the real HTTP kernel, so the
      * simulator exercises routing, middleware and authentication exactly as an
      * external gateway would.
+     *
+     * Returns Symfony's base response type: the contract endpoints answer with
+     * JSON, the rest with views, and a gateway must handle both.
      */
-    private function callContract(string $endpoint, Integration $integration, array $payload): Response
+    private function callContract(string $endpoint, Integration $integration, array $payload): HttpResponse
     {
         return app()->handle(Request::create(
             uri: '/api/v1/integrations/portal/'.$endpoint,

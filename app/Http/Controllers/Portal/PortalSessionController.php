@@ -77,6 +77,14 @@ class PortalSessionController extends Controller
 
         $this->sessions->complete($portalSession, $response->id);
 
+        // Hand the browser back to the gateway when it asked for it: the
+        // gateway still holds the network session and needs the client to
+        // arrive so it can release it. Only the authenticated gateway can set
+        // this, and it was validated before the session was created.
+        if ($portalSession->redirect_url !== null) {
+            return redirect()->away($portalSession->redirect_url);
+        }
+
         return redirect()->route('portal.thanks', ['session' => $portalSession->id]);
     }
 
