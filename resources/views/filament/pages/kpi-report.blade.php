@@ -1,201 +1,240 @@
-{{-- KPI report. Averages are never shown without their sample size (FR-REP-003). --}}
+{{--
+    KPI report.
+
+    Styling note: this view deliberately uses only Filament's `fi-*` components
+    (section, badge, button, input, table) rather than generic Tailwind utility
+    classes. The panel compiles no general utility set, so those classes are
+    silently dropped and the page renders as bare, unstyled HTML. The only inline
+    styles below are grid containers and the headline numerals, which have no
+    Filament component equivalent.
+
+    Rule: an average is never shown without the sample size behind it (FR-REP-003).
+--}}
 <x-filament-panels::page>
-    <form method="GET" class="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-            <label class="text-sm">
-                <span class="mb-1 block font-medium text-gray-700">From</span>
-                <input type="date" name="from" value="{{ $activeFilters['from'] ?? '' }}"
-                       class="w-full rounded-lg border border-gray-300 px-3 py-2">
-            </label>
+    <form method="GET">
+        <x-filament::section
+            icon="heroicon-o-funnel"
+            heading="Filters"
+            description="Narrow the figures below. Rates are calculated only from responses inside your scope."
+        >
+            <div style="display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));">
+                <label style="display:block;">
+                    <span class="fi-section-header-description" style="display:block;margin-bottom:.35rem;">From</span>
+                    <x-filament::input.wrapper>
+                        <input type="date" name="from" value="{{ $activeFilters['from'] ?? '' }}" class="fi-input">
+                    </x-filament::input.wrapper>
+                </label>
 
-            <label class="text-sm">
-                <span class="mb-1 block font-medium text-gray-700">To</span>
-                <input type="date" name="to" value="{{ $activeFilters['to'] ?? '' }}"
-                       class="w-full rounded-lg border border-gray-300 px-3 py-2">
-            </label>
+                <label style="display:block;">
+                    <span class="fi-section-header-description" style="display:block;margin-bottom:.35rem;">To</span>
+                    <x-filament::input.wrapper>
+                        <input type="date" name="to" value="{{ $activeFilters['to'] ?? '' }}" class="fi-input">
+                    </x-filament::input.wrapper>
+                </label>
 
-            <label class="text-sm">
-                <span class="mb-1 block font-medium text-gray-700">Province</span>
-                <select name="province" class="w-full rounded-lg border border-gray-300 px-3 py-2">
-                    <option value="">All</option>
-                    @foreach ($provinces as $value => $label)
-                        <option value="{{ $value }}" @selected(($activeFilters['province'] ?? '') === (string) $value)>{{ $label }}</option>
-                    @endforeach
-                </select>
-            </label>
+                <label style="display:block;">
+                    <span class="fi-section-header-description" style="display:block;margin-bottom:.35rem;">Province</span>
+                    <x-filament::input.wrapper>
+                        <x-filament::input.select name="province">
+                            <option value="">All provinces</option>
+                            @foreach ($provinces as $value => $label)
+                                <option value="{{ $value }}" @selected(($activeFilters['province'] ?? '') === (string) $value)>{{ $label }}</option>
+                            @endforeach
+                        </x-filament::input.select>
+                    </x-filament::input.wrapper>
+                </label>
 
-            <label class="text-sm">
-                <span class="mb-1 block font-medium text-gray-700">Supplier</span>
-                <select name="supplier_id" class="w-full rounded-lg border border-gray-300 px-3 py-2">
-                    <option value="">All</option>
-                    @foreach ($suppliers as $id => $name)
-                        <option value="{{ $id }}" @selected(($activeFilters['supplier_id'] ?? '') === (string) $id)>{{ $name }}</option>
-                    @endforeach
-                </select>
-            </label>
+                <label style="display:block;">
+                    <span class="fi-section-header-description" style="display:block;margin-bottom:.35rem;">Supplier</span>
+                    <x-filament::input.wrapper>
+                        <x-filament::input.select name="supplier_id">
+                            <option value="">All suppliers</option>
+                            @foreach ($suppliers as $id => $name)
+                                <option value="{{ $id }}" @selected(($activeFilters['supplier_id'] ?? '') === (string) $id)>{{ $name }}</option>
+                            @endforeach
+                        </x-filament::input.select>
+                    </x-filament::input.wrapper>
+                </label>
 
-            <label class="text-sm">
-                <span class="mb-1 block font-medium text-gray-700">Site</span>
-                <select name="site_id" class="w-full rounded-lg border border-gray-300 px-3 py-2">
-                    <option value="">All</option>
-                    @foreach ($sites as $id => $code)
-                        <option value="{{ $id }}" @selected(($activeFilters['site_id'] ?? '') === (string) $id)>{{ $code }}</option>
-                    @endforeach
-                </select>
-            </label>
+                <label style="display:block;">
+                    <span class="fi-section-header-description" style="display:block;margin-bottom:.35rem;">Site</span>
+                    <x-filament::input.wrapper>
+                        <x-filament::input.select name="site_id">
+                            <option value="">All sites</option>
+                            @foreach ($sites as $id => $code)
+                                <option value="{{ $id }}" @selected(($activeFilters['site_id'] ?? '') === (string) $id)>{{ $code }}</option>
+                            @endforeach
+                        </x-filament::input.select>
+                    </x-filament::input.wrapper>
+                </label>
 
-            <label class="text-sm">
-                <span class="mb-1 block font-medium text-gray-700">Attribution</span>
-                <select name="attribution" class="w-full rounded-lg border border-gray-300 px-3 py-2">
-                    <option value="">All</option>
-                    @foreach ($attributions as $value => $label)
-                        <option value="{{ $value }}" @selected(($activeFilters['attribution'] ?? '') === $value)>{{ $label }}</option>
-                    @endforeach
-                </select>
-            </label>
-        </div>
+                <label style="display:block;">
+                    <span class="fi-section-header-description" style="display:block;margin-bottom:.35rem;">Attribution</span>
+                    <x-filament::input.wrapper>
+                        <x-filament::input.select name="attribution">
+                            <option value="">All sources</option>
+                            @foreach ($attributions as $value => $label)
+                                <option value="{{ $value }}" @selected(($activeFilters['attribution'] ?? '') === (string) $value)>{{ $label }}</option>
+                            @endforeach
+                        </x-filament::input.select>
+                    </x-filament::input.wrapper>
+                </label>
+            </div>
 
-        <div class="mt-3 flex items-center gap-3">
-            <button type="submit" class="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white">Apply filters</button>
-            <a href="{{ url()->current() }}" class="text-sm text-gray-600 underline">Reset</a>
-        </div>
+            <x-slot name="footer">
+                <x-filament::button type="submit">Apply filters</x-filament::button>
+                <x-filament::button tag="a" :href="url()->current()" color="gray" outlined>Reset</x-filament::button>
+            </x-slot>
+        </x-filament::section>
     </form>
 
     {{-- Headline figures. --}}
-    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        @foreach ([
-            'Total responses' => $totals['responses'] ?? 0,
-            'Average rating' => $totals['average_rating'] ?? null,
-            'Positive responses' => $totals['positive_rate'] !== null ? $totals['positive_rate'].'%' : null,
-            'Connection issue rate' => $totals['issue_rate'] !== null ? $totals['issue_rate'].'%' : null,
-        ] as $label => $value)
-            <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                <p class="text-sm text-gray-500">{{ $label }}</p>
-                <p class="mt-1 text-2xl font-bold text-gray-900">{{ $value ?? '—' }}</p>
-                @if ($label === 'Average rating' || $label === 'Positive responses')
-                    <p class="mt-1 text-xs text-gray-500">
-                        @if (($totals['rated'] ?? 0) === 0)
-                            No rated responses yet
-                        @else
-                            Based on {{ $totals['rated'] }} rated response{{ ($totals['rated'] ?? 0) === 1 ? '' : 's' }}
-                        @endif
-                    </p>
-                @endif
-            </div>
+    <div style="display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(12rem,1fr));margin-block:1.5rem;">
+        @php
+            $rated = (int) ($totals['rated'] ?? 0);
+            $tiles = [
+                ['label' => 'Total responses', 'value' => (int) ($totals['responses'] ?? 0), 'note' => 'All responses in scope for these filters.'],
+                ['label' => 'Average rating', 'value' => $totals['average_rating'] ?? null, 'note' => $rated === 0 ? 'No rated responses yet.' : 'From '.$rated.' rated response'.($rated === 1 ? '' : 's').'.'],
+                ['label' => 'Positive responses', 'value' => ($totals['positive_rate'] ?? null) === null ? null : $totals['positive_rate'].'%', 'note' => 'Rating of '.$positiveThreshold.' or more, from '.$rated.' rated response'.($rated === 1 ? '' : 's').'.'],
+                ['label' => 'Connection issue rate', 'value' => ($totals['issue_rate'] ?? null) === null ? null : $totals['issue_rate'].'%', 'note' => 'Share of all responses reporting a connection problem.'],
+            ];
+        @endphp
+
+        @foreach ($tiles as $tile)
+            <x-filament::section compact :heading="$tile['label']">
+                <div style="font-size:1.875rem;font-weight:700;line-height:1.1;letter-spacing:-.02em;">
+                    {{ $tile['value'] ?? '—' }}
+                </div>
+                <div class="fi-section-header-description" style="margin-top:.35rem;">
+                    {{ $tile['note'] }}
+                </div>
+            </x-filament::section>
         @endforeach
     </div>
 
-    <div class="mt-3 grid gap-3 sm:grid-cols-2">
-        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <p class="text-sm text-gray-500">Verified portal responses</p>
-            <p class="mt-1 text-2xl font-bold">{{ $totals['verified'] ?? 0 }}</p>
+    {{-- Verified vs unverified (FR-REP-006). --}}
+    <x-filament::section icon="heroicon-o-shield-check" heading="Attribution" class="mb-6">
+        <div style="display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));">
+            <div>
+                <x-filament::badge color="success" icon="heroicon-m-shield-check">Verified portal</x-filament::badge>
+                <div style="margin-top:.5rem;font-size:1.5rem;font-weight:700;">{{ $totals['verified'] ?? 0 }}</div>
+                <div class="fi-section-header-description">Confirmed by the captive portal handoff.</div>
+            </div>
+            <div>
+                <x-filament::badge color="warning" icon="heroicon-m-link">Site link or QR</x-filament::badge>
+                <div style="margin-top:.5rem;font-size:1.5rem;font-weight:700;">{{ $totals['unverified'] ?? 0 }}</div>
+                <div class="fi-section-header-description">Self-attributed. Not tied to a MAC address.</div>
+            </div>
         </div>
-        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <p class="text-sm text-gray-500">Unverified (link / QR)</p>
-            <p class="mt-1 text-2xl font-bold">{{ $totals['unverified'] ?? 0 }}</p>
-        </div>
-    </div>
+    </x-filament::section>
 
-    <div class="mt-6 grid gap-6 lg:grid-cols-2">
-        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <h2 class="font-semibold text-gray-900">By site</h2>
-            <table class="mt-3 w-full text-sm">
-                <thead class="text-left text-xs uppercase text-gray-500">
-                    <tr>
-                        <th class="py-2">Site</th>
-                        <th class="py-2">Responses</th>
-                        <th class="py-2">Avg rating (n)</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100">
-                    @forelse ($bySite as $row)
+    <div style="display:grid;gap:1.5rem;grid-template-columns:repeat(auto-fit,minmax(22rem,1fr));">
+        {{-- By site --}}
+        <x-filament::section icon="heroicon-o-building-office-2" heading="By site" description="Ratings shown with their sample size.">
+            <div style="overflow-x:auto;">
+                <table class="fi-ta">
+                    <thead>
                         <tr>
-                            <td class="py-2 font-medium">{{ $row['label'] }}</td>
-                            <td class="py-2">{{ $row['responses'] }}</td>
-                            <td class="py-2">
-                                {{ $row['average_rating'] ?? '—' }}
-                                <span class="text-xs text-gray-500">({{ $row['rated'] }})</span>
-                                @unless ($row['significant'])
-                                    <span class="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800">
-                                        small sample (&lt; {{ $minimumSampleSize }})
-                                    </span>
-                                @endunless
-                            </td>
+                            <th class="fi-ta-header-cell">Site</th>
+                            <th class="fi-ta-header-cell">Responses</th>
+                            <th class="fi-ta-header-cell">Avg rating (n)</th>
                         </tr>
-                    @empty
-                        <tr><td colspan="3" class="py-4 text-gray-500">No responses for these filters.</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+                    </thead>
+                    <tbody>
+                        @forelse ($bySite as $row)
+                            <tr class="fi-ta-row">
+                                <td class="fi-ta-cell">{{ $row['label'] }}</td>
+                                <td class="fi-ta-cell">{{ $row['responses'] }}</td>
+                                <td class="fi-ta-cell">
+                                    <span style="font-weight:600;">{{ $row['average_rating'] ?? '—' }}</span>
+                                    <span class="fi-section-header-description">(n={{ $row['rated'] }})</span>
+                                    @unless ($row['significant'])
+                                        <x-filament::badge color="warning" size="sm">small sample</x-filament::badge>
+                                    @endunless
+                                </td>
+                            </tr>
+                        @empty
+                            <tr class="fi-ta-row">
+                                <td class="fi-ta-cell" colspan="3">No responses for these filters.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </x-filament::section>
 
-        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <h2 class="font-semibold text-gray-900">By supplier</h2>
-            <table class="mt-3 w-full text-sm">
-                <thead class="text-left text-xs uppercase text-gray-500">
-                    <tr>
-                        <th class="py-2">Supplier</th>
-                        <th class="py-2">Responses</th>
-                        <th class="py-2">Avg rating (n)</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100">
-                    @forelse ($bySupplier as $row)
+        {{-- By supplier --}}
+        <x-filament::section icon="heroicon-o-truck" heading="By supplier" description="Ratings shown with their sample size.">
+            <div style="overflow-x:auto;">
+                <table class="fi-ta">
+                    <thead>
                         <tr>
-                            <td class="py-2 font-medium">{{ $row['label'] }}</td>
-                            <td class="py-2">{{ $row['responses'] }}</td>
-                            <td class="py-2">
-                                {{ $row['average_rating'] ?? '—' }}
-                                <span class="text-xs text-gray-500">({{ $row['rated'] }})</span>
-                                @unless ($row['significant'])
-                                    <span class="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800">small sample</span>
-                                @endunless
-                            </td>
+                            <th class="fi-ta-header-cell">Supplier</th>
+                            <th class="fi-ta-header-cell">Responses</th>
+                            <th class="fi-ta-header-cell">Avg rating (n)</th>
                         </tr>
-                    @empty
-                        <tr><td colspan="3" class="py-4 text-gray-500">No responses for these filters.</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+                    </thead>
+                    <tbody>
+                        @forelse ($bySupplier as $row)
+                            <tr class="fi-ta-row">
+                                <td class="fi-ta-cell">{{ $row['label'] }}</td>
+                                <td class="fi-ta-cell">{{ $row['responses'] }}</td>
+                                <td class="fi-ta-cell">
+                                    <span style="font-weight:600;">{{ $row['average_rating'] ?? '—' }}</span>
+                                    <span class="fi-section-header-description">(n={{ $row['rated'] }})</span>
+                                    @unless ($row['significant'])
+                                        <x-filament::badge color="warning" size="sm">small sample</x-filament::badge>
+                                    @endunless
+                                </td>
+                            </tr>
+                        @empty
+                            <tr class="fi-ta-row">
+                                <td class="fi-ta-cell" colspan="3">No responses for these filters.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </x-filament::section>
     </div>
 
-    <div class="mt-6 grid gap-6 lg:grid-cols-2">
-        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <h2 class="font-semibold text-gray-900">Issues reported</h2>
-            <ul class="mt-3 space-y-1 text-sm">
-                @forelse ($byIssue as $row)
-                    <li class="flex justify-between">
-                        <span class="capitalize">{{ str_replace('_', ' ', $row['issue_category']) }}</span>
-                        <span class="font-medium">{{ $row['total'] }}</span>
-                    </li>
-                @empty
-                    <li class="text-gray-500">No responses for these filters.</li>
-                @endforelse
-            </ul>
-        </div>
+    <div style="display:grid;gap:1.5rem;grid-template-columns:repeat(auto-fit,minmax(22rem,1fr));margin-block:1.5rem;">
+        {{-- Issues --}}
+        <x-filament::section icon="heroicon-o-exclamation-triangle" heading="Issues reported">
+            @forelse ($byIssue as $row)
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;padding-block:.5rem;border-bottom:1px solid var(--fi-color-gray-200,rgba(128,128,128,.2));">
+                    <span>{{ ucfirst(str_replace('_', ' ', $row['issue_category'])) }}</span>
+                    <x-filament::badge color="gray">{{ $row['total'] }}</x-filament::badge>
+                </div>
+            @empty
+                <p class="fi-section-header-description">No responses for these filters.</p>
+            @endforelse
+        </x-filament::section>
 
-        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <h2 class="font-semibold text-gray-900">Daily responses</h2>
-            <ul class="mt-3 max-h-72 space-y-1 overflow-auto text-sm">
-                @forelse (array_reverse($daily) as $row)
-                    <li class="flex justify-between">
-                        <span class="text-gray-600">{{ $row['day'] }}</span>
-                        <span>
-                            {{ $row['responses'] }}
-                            <span class="text-xs text-gray-500">(avg {{ $row['average_rating'] ?? '—' }})</span>
-                        </span>
-                    </li>
-                @empty
-                    <li class="text-gray-500">No responses for these filters.</li>
-                @endforelse
-            </ul>
-        </div>
+        {{-- Daily --}}
+        <x-filament::section icon="heroicon-o-calendar-days" heading="Daily responses" description="Most recent first.">
+            @forelse (array_reverse($daily) as $row)
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;padding-block:.5rem;border-bottom:1px solid var(--fi-color-gray-200,rgba(128,128,128,.2));">
+                    <span>{{ $row['day'] }}</span>
+                    <span>
+                        <span style="font-weight:600;">{{ $row['responses'] }}</span>
+                        <span class="fi-section-header-description">avg {{ $row['average_rating'] ?? '—' }}</span>
+                    </span>
+                </div>
+            @empty
+                <p class="fi-section-header-description">No responses for these filters.</p>
+            @endforelse
+        </x-filament::section>
     </div>
 
-    <p class="mt-6 text-xs text-gray-500">
-        Positive = rating of {{ $positiveThreshold }} or more. Averages are shown with the number of rated
-        responses they came from; figures below {{ $minimumSampleSize }} rated responses are flagged, because
-        a small sample is not evidence of a trend.
-    </p>
+    <x-filament::section icon="heroicon-o-information-circle" heading="How these figures are calculated">
+        <ul style="margin:0;padding-inline-start:1.25rem;display:grid;gap:.35rem;">
+            <li><strong>Positive</strong> means a rating of {{ $positiveThreshold }} or more out of 5.</li>
+            <li><strong>Averages always carry (n)</strong>, the number of rated responses they came from.</li>
+            <li>Groups with fewer than {{ $minimumSampleSize }} rated responses are flagged
+                <strong>small sample</strong>, because a handful of answers is not evidence of a trend.</li>
+            <li>A figure shows <strong>—</strong> rather than 0% when there is no data to calculate it from.</li>
+            <li>Verified portal and site link or QR responses are reported separately and never blended.</li>
+        </ul>
+    </x-filament::section>
 </x-filament-panels::page>

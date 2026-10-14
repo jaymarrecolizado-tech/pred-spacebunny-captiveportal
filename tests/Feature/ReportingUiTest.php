@@ -11,6 +11,7 @@ use App\Models\Site;
 use App\Models\SurveyResponse;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -39,7 +40,12 @@ class ReportingUiTest extends TestCase
             ->assertOk()
             ->assertSee('Total responses')
             ->assertSee('Average rating')
-            ->assertSee('Connection issue rate');
+            ->assertSee('Connection issue rate')
+            // The Filament components must emit their real classes, otherwise the
+            // page is unstyled markup and only a browser will reveal it.
+            ->assertSee('fi-section', escape: false)
+            ->assertSee('fi-ta-header-cell', escape: false)
+            ->assertSee('fi-input', escape: false);
     }
 
     public function test_the_kpi_page_applies_filters_from_the_query_string(): void
@@ -91,6 +97,42 @@ class ReportingUiTest extends TestCase
         Livewire::actingAs($this->admin())
             ->test(ListSurveyResponses::class)
             ->assertActionExists('export');
+    }
+
+    /**
+     * Regression guard: the export modal needs Filament's `exports` table. When
+     * that migration had not been published, the modal failed to load and the
+     * panel showed "Error while loading page" while the test above still passed.
+     */
+    public function test_the_export_modal_opens(): void
+    {
+        $this->assertTrue(
+            Schema::hasTable('exports'),
+            'Filament export migrations must be published and run.',
+        );
+
+        Livewire::actingAs($this->admin())
+            ->test(ListSurveyResponses::class)
+            ->mountAction('export')
+            ->assertActionMounted('export');
+    }
+
+    /**
+     * The panel does not compile a general Tailwind utility set, so a view
+     * written with utilities like `grid` or `bg-white` renders as bare,
+     * unstyled HTML. The KPI report must stay on Filament components.
+     */
+    public function test_the_kpi_view_uses_filament_components_not_uncompiled_utilities(): void
+    {
+        $view = file_get_contents(resource_path('views/filament/pages/kpi-report.blade.php'));
+
+        $this->assertStringContainsString('<x-filament::section', $view);
+        $this->assertStringContainsString('class="fi-ta"', $view);
+
+        // Any of these would be silently ignored by the panel stylesheet.
+        foreach (['bg-white', 'text-gray-900', 'rounded-xl', 'border-gray-200', 'shadow-sm'] as $utility) {
+            $this->assertStringNotContainsString($utility, $view, "[{$utility}] is not a real class in this panel.");
+        }
     }
 
     public function test_the_exporter_only_receives_rows_within_scope(): void
