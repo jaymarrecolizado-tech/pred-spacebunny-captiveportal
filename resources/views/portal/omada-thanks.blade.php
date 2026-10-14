@@ -2,6 +2,12 @@
 
 @section('title', 'Connecting you — '.$site->name)
 
+@if ($authorized && $successUrl)
+    @section('head')
+        <meta http-equiv="refresh" content="6;url={{ $successUrl }}">
+    @endsection
+@endif
+
 @section('content')
     <div class="rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm">
         @if ($authorized)
@@ -11,7 +17,8 @@
             <div class="mt-4 hidden text-left" id="final">
                 <h1 class="text-center text-xl font-semibold">You should now be online</h1>
                 <p class="mt-2 text-center text-sm text-slate-600">
-                    Try opening a website. If it doesn't load, disconnect and reconnect to {{ $site->name }}.
+                    If this page doesn't move on its own, close this window and open
+                    your browser — your internet is already on.
                 </p>
             </div>
             <noscript>
