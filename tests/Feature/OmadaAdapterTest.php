@@ -196,7 +196,10 @@ class OmadaAdapterTest extends TestCase
             ->get(route('portal.omada.thanks', ['siteCode' => $site->site_code]))
             ->assertOk()
             ->assertSee('id="count"', escape: false)
-            ->assertSee('https://e.gov.ph/', escape: false);
+            ->assertSee('https://e.gov.ph/', escape: false)
+            // Parser-level redirect as a second mechanism: some captive
+            // mini-browsers swallow JS navigation but honor meta refresh.
+            ->assertSee('http-equiv="refresh"', escape: false);
     }
 
     public function test_the_thanks_page_has_no_redirect_when_unconfigured(): void
