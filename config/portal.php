@@ -44,10 +44,15 @@ return [
     'simulator_enabled' => (bool) env('PORTAL_SIMULATOR_ENABLED', env('APP_ENV') === 'local'),
 
     /*
-    | Authorization duration granted to a client that completes the survey,
-    | in microseconds (TP-Link doc 13080). Default: 8 hours.
+    | Authorization duration granted to a client that completes the survey.
+    |
+    | Unit: MILLISECONDS. TP-Link doc 13080's parameter table says microseconds,
+    | but its own code sample passes a value named `$milliseconds`, and the
+    | controller was observed zeroing traffic for authorizations sent in
+    | microseconds — 8 hours there is 2.88e10, which overflows 32 bits. One hour
+    | in milliseconds (3,600,000) is 32-bit safe and matches the sample.
     */
-    'auth_duration_microseconds' => (int) env('PORTAL_AUTH_DURATION_US', 8 * 3600 * 1000000),
+    'auth_duration_ms' => (int) env('PORTAL_AUTH_DURATION_MS', 3600000),
 
     /*
     | Omada hotspot operator used for the authorize-back call. This is the

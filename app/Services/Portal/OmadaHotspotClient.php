@@ -106,8 +106,11 @@ class OmadaHotspotClient
                 'ssidName' => $client['ssidName'],
                 'radioId' => $client['radioId'],
                 'site' => $client['site'],
-                // Authorization duration, in microseconds (per the doc).
-                'time' => (int) config('portal.auth_duration_microseconds'),
+                // Authorization duration in milliseconds. See config/portal.php:
+                // microseconds overflow the controller's 32-bit field and produce
+                // a grant that is born expired (observed live: authorized client,
+                // zero traffic).
+                'time' => (int) config('portal.auth_duration_ms'),
                 'authType' => 4,
             ]
         );
