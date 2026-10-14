@@ -29,7 +29,7 @@
         <h2 class="text-lg font-semibold">1. A user joins the Wi-Fi</h2>
         <p class="mt-1 text-sm text-slate-600">The gateway holds the client captive and calls the init endpoint.</p>
 
-        <form method="POST" action="{{ route('simulator.connect') }}" class="mt-4 grid gap-3 sm:grid-cols-3">
+        <form method="POST" action="{{ route('simulator.connect') }}" class="mt-4 grid gap-3 sm:grid-cols-2">
             @csrf
             <label class="block text-sm">
                 <span class="font-medium">Integration</span>
@@ -53,7 +53,18 @@
                 </select>
             </label>
 
-            <div class="flex items-end">
+            <label class="block text-sm sm:col-span-2">
+                <span class="font-medium">Return URL (optional)</span>
+                <input type="url" name="redirect_url" value="{{ old('redirect_url') }}"
+                       placeholder="https://gateway.example/release?client=..."
+                       class="mt-1 w-full rounded-lg border border-slate-300 p-2">
+                <span class="mt-1 block text-xs text-slate-500">
+                    Where the gateway wants the client back once the survey is done. Leave empty to end on the
+                    platform's thank-you page.
+                </span>
+            </label>
+
+            <div class="flex items-end sm:col-span-2">
                 <button type="submit" class="min-h-11 w-full rounded-lg bg-slate-900 px-4 py-2 font-semibold text-white">
                     Connect (opens survey)
                 </button>

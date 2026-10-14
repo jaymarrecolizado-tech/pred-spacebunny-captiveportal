@@ -15,6 +15,29 @@ return [
     'session_ttl_minutes' => (int) env('PORTAL_SESSION_TTL_MINUTES', 15),
 
     /*
+    | The address the survey must be handed off to. This is NOT the address the
+    | gateway calls us on: a gateway often reaches the platform over a management
+    | VLAN or private DNS, and a captive device can resolve none of those. Every
+    | survey URL is built from this value, so it must be the host that is
+    | reachable from inside the walled garden, over plain HTTP, on the port the
+    | device will actually use.
+    |
+    | Defaults to APP_URL. Set it explicitly if the two differ.
+    */
+    'public_url' => env('PORTAL_PUBLIC_URL', env('APP_URL')),
+
+    /*
+    | Optional allow-list of hosts the gateway may name as the place to send the
+    | browser back to after the survey. Empty means "any http(s) host", which is
+    | acceptable while gateways are DICT-registered; lock it down before the
+    | pilot leaves test mode.
+    */
+    'allowed_return_hosts' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('PORTAL_ALLOWED_RETURN_HOSTS', '')),
+    ))),
+
+    /*
     | The gateway simulator proves the contract end to end without hardware. It
     | must never be reachable in production.
     */

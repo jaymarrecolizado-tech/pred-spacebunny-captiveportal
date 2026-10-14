@@ -30,7 +30,7 @@ class PortalSessionService
     /**
      * A gateway hands off a client and expects a survey URL back.
      *
-     * @param  array{gateway_session_ref?: string|null}  $attributes
+     * @param  array{gateway_session_ref?: string|null, redirect_url?: string|null}  $attributes
      */
     public function open(Integration $integration, ?Site $site, array $attributes = []): PortalSession
     {
@@ -45,6 +45,8 @@ class PortalSessionService
             'status' => PortalSessionState::Active,
             'issued_at' => now(),
             'expires_at' => now()->addMinutes($this->ttlMinutes()),
+            // Where the gateway wants the browser back once the survey is done.
+            'redirect_url' => $attributes['redirect_url'] ?? null,
             // Spec 10.7: correlation references are hashed, never stored raw.
             'gateway_session_hash' => isset($attributes['gateway_session_ref']) && $attributes['gateway_session_ref'] !== null
                 ? hash('sha256', $attributes['gateway_session_ref'])
@@ -55,6 +57,37 @@ class PortalSessionService
         $integration->recordSuccess();
 
         return $session;
+    }
+
+    /**
+     * The URL a gateway must send the browser to.
+     *
+     * Built from the configured public address, never from the Host header of
+     * the server-to-server call: a gateway commonly reaches the platform over a
+     * management VLAN, a private hostname or the VPS's own loopback, and a
+     * captive device can resolve none of those. Deriving this URL from the
+     * request would hand the phone a link it can never open.
+     */
+    public function handoffUrl(PortalSession $session): string
+    {
+        return $this->publicBase().route('portal.session', [
+            'session' => $session->id,
+            'token' => PortalToken::mint($session),
+        ], absolute: false);
+    }
+
+    /**
+     * The address a captive device can reach, over plain HTTP.
+     */
+    public function publicBase(): string
+    {
+        $base = (string) config('portal.public_url');
+
+        if ($base === '') {
+            $base = (string) config('app.url');
+        }
+
+        return rtrim($base, '/');
     }
 
     /**

@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $integration_id
  * @property int $site_id
  * @property PortalSessionState $status
+ * @property string|null $redirect_url
  */
 class PortalSession extends Model
 {
@@ -32,6 +33,7 @@ class PortalSession extends Model
         'expires_at',
         'completed_at',
         'response_id',
+        'redirect_url',
         'gateway_session_hash',
         'client_ip_hash',
     ];

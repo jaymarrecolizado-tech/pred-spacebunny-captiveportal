@@ -1,0 +1,94 @@
+# ---------------------------------------------------------------------------
+# nginx vhost for the DICT Free Wi-Fi Customer Feedback Platform.
+#
+# Target: /etc/nginx/sites-available/dict-feedback, symlinked into
+# sites-enabled. The docroot is the `current` symlink, so a release swap is
+# picked up without touching nginx.
+#
+# BEFORE USING: confirm the VPS does not already serve this hostname or port.
+# Plan.md Phase 2 requires that an unrelated application on this VPS is not
+# disturbed; if another vhost owns :80, give this one its own name and only add
+# a new server_name.
+#
+# Captive-portal specifics, and why they are deliberate:
+#   * No HTTP -> HTTPS redirect. Portal detection happens before the client
+#     trusts any certificate, so forcing TLS breaks the handoff on real phones.
+#   * No Strict-Transport-Security header. Once a browser pins HSTS it will
+#     refuse the plain-HTTP portal for as long as the pin lasts.
+#   * No `underscores_in_headers` needed: the integration credentials arrive as
+#     X-Integration-Id / X-Integration-Secret (dashes), which pass through.
+# ---------------------------------------------------------------------------
+
+server {
+    listen 80;
+    listen [::]:80;
+
+    server_name feedback.example.gov.ph;
+
+    # The release symlink, never a specific release directory.
+    root /var/www/dict-feedback/current/public;
+    index index.php;
+
+    charset utf-8;
+
+    # Survey answers are small; the gateway contract payloads are smaller.
+    client_max_body_size 2m;
+
+    access_log /var/log/nginx/dict-feedback.access.log;
+    error_log  /var/log/nginx/dict-feedback.error.log;
+
+    # --- Laravel front controller -----------------------------------------
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        fastcgi_param DOCUMENT_ROOT $realpath_root;
+
+        # A slow survey on a bad phone link should not time out mid-submit.
+        fastcgi_read_timeout 60s;
+    }
+
+    # Never serve dotfiles or the release tree's internals.
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+
+    location ~* /(\.env|composer\.(json|lock)|package(-lock)?\.json|artisan)$ {
+        deny all;
+    }
+}
+
+# ---------------------------------------------------------------------------
+# Optional: enable once TLS is in place and the pilot is over.
+#
+# `certbot --nginx -d feedback.example.gov.ph` writes a server block similar to
+# this one. Two things to keep in mind if you enable it:
+#   1. Do not remove the plain-HTTP block above. The portal handoff needs it.
+#   2. Only then set SESSION_SECURE_COOKIE=true in shared/.env, re-run
+#      `php artisan config:cache`, and add the HSTS header.
+# ---------------------------------------------------------------------------
+# server {
+#     listen 443 ssl http2;
+#     server_name feedback.example.gov.ph;
+#
+#     ssl_certificate     /etc/letsencrypt/live/feedback.example.gov.ph/fullchain.pem;
+#     ssl_certificate_key /etc/letsencrypt/live/feedback.example.gov.ph/privkey.pem;
+#
+#     root /var/www/dict-feedback/current/public;
+#     index index.php;
+#
+#     location / { try_files $uri $uri/ /index.php?$query_string; }
+#
+#     location ~ \.php$ {
+#         include snippets/fastcgi-php.conf;
+#         fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+#         fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+#     }
+# }

@@ -183,6 +183,18 @@ class PublicSurveyTest extends TestCase
         $this->assertSame(0, SurveyResponse::count());
     }
 
+    public function test_the_qr_poster_renders(): void
+    {
+        [$site] = $this->activeSiteWithSurvey();
+
+        $this->get(route('site.qr', ['siteCode' => $site->site_code]))
+            ->assertOk()
+            // A printable poster must actually contain a scannable code.
+            ->assertSee('<svg', escape: false)
+            ->assertSee($site->site_code)
+            ->assertSee($site->name);
+    }
+
     public function test_a_site_specific_assignment_overrides_the_global_one(): void
     {
         [$site, $survey] = $this->activeSiteWithSurvey();

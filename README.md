@@ -7,8 +7,10 @@ Central platform for anonymous customer feedback at DICT Free Wi-Fi sites, as sp
 the Phase 5 vendor-neutral captive portal contract.**
 Phases 0–2 (governance, supplier/gateway inventory, VPS foundation) are human work and are not in this repo.
 
-The portal contract is verified end to end against the bundled gateway simulator. It is **not yet
-verified against real gateway hardware** — see [docs/PORTAL_CONTRACT.md](docs/PORTAL_CONTRACT.md).
+The portal contract is verified end to end against the bundled gateway simulator, and
+verified over real HTTP on a LAN address (init → browser redirect → survey → submit →
+status). It is **not yet verified against real gateway hardware** — see
+[docs/PORTAL_CONTRACT.md](docs/PORTAL_CONTRACT.md).
 
 ## Stack
 
@@ -31,7 +33,33 @@ php artisan serve
 - Gateway simulator (local only, admin-only): <http://localhost:8000/simulator>
 - Supplier-scoped demo user (proves row-level scope): `supplier@example.test` / `password`
 
-Tests: `php artisan test` (55 tests) · Style: `vendor/bin/pint`
+Tests: `php artisan test` (96 tests) · Style: `vendor/bin/pint`
+
+### Testing the handoff from a phone
+
+The handoff URL is built from `PORTAL_PUBLIC_URL` (defaults to `APP_URL`), **not**
+from the Host header of the gateway's call. Set it to the address the phone can
+reach and serve on that address:
+
+```bash
+PORTAL_PUBLIC_URL=http://192.168.1.41:8000 php artisan serve --host=192.168.1.41 --port=8000
+```
+
+Then open `/simulator`, pick the demo integration, and connect. The browser is
+redirected into the survey; submit it and the simulator's status screen reports
+`ACCESS GRANTED`. Add a **Return URL** in the simulator form to check the third
+hop — the browser should end up back at that URL, not on our thank-you page.
+
+## Deployment
+
+VPS deployment, rollback, and the captive-portal network requirements are in
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). The release and rollback scripts live in
+[`deploy/`](deploy/); they use an immutable `releases/` + `shared/.env` +
+`current` symlink layout, and refuse to deploy with `APP_DEBUG=true`, an empty
+`APP_KEY`, a loopback `PORTAL_PUBLIC_URL`, or the gateway simulator enabled.
+
+`deploy/env.production.example` is the production environment template. It is
+deliberately not named `.env.production`: the repository ignores `.env*`.
 
 ## What is here
 
@@ -44,8 +72,10 @@ Tests: `php artisan test` (55 tests) · Style: `vendor/bin/pint`
 | Public survey UI (mobile-first, no JS required) | `resources/views/public/survey.blade.php` |
 | Public JSON API (`/api/v1/public/*`) | `app/Http/Controllers/Api/PublicApiController.php` |
 | Captive portal contract (init/status/complete) | `app/Http/Controllers/Portal/PortalApiController.php` |
+| Handoff URL built from `PORTAL_PUBLIC_URL`, return-to-gateway hop | `app/Services/Portal/PortalSessionService.php` |
 | Signed handoff token, session rules, outcome signing | `app/Services/Portal/` |
 | Gateway simulator (local only) | `app/Http/Controllers/Simulator/GatewayController.php` |
+| Forwarding tests (three hops, reachability, no-JS) | `tests/Feature/PortalForwardingTest.php` |
 | Integration registry, rotation, revocation | `app/Models/Integration.php`, `app/Filament/Resources/Integrations` |
 | RBAC + row-level organizational scope | `app/Policies/*`, `Site::scopeVisibleTo()`, `SurveyResponse::scopeVisibleTo()` |
 | Audit trail (append-only, before/after diffs) | `app/Models/Concerns/Auditable.php`, `app/Models/AuditLog.php` |
@@ -56,6 +86,10 @@ Tests: `php artisan test` (55 tests) · Style: `vendor/bin/pint`
 - **Attribution is never faked.** A link/QR submission records `site_link`/`qr_code`
   (unverified). Only the portal handoff, which needs a secret the public browser never has,
   records `captive_verified`. See `Site::publicAttributionMethod()` and the portal controllers.
+- **The handoff URL never trusts the caller's host.** It is built from
+  `PORTAL_PUBLIC_URL`, because a gateway usually reaches the platform over a private
+  address a captive device cannot resolve. Getting this wrong produces a spinner, not
+  an error, so it is asserted in `PortalForwardingTest` and checked live in the pilot gate.
 - **A mandatory survey policy fails safe.** If a site requests `required_before_access` without a
   verified portal integration, `ResolveSurvey` downgrades it to `optional` and reports it, so the
   platform can never strand a public user behind a survey it cannot prove is reachable.
