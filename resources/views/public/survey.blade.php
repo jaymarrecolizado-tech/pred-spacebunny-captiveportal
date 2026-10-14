@@ -27,7 +27,7 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('site.survey.store', ['siteCode' => $site->site_code]) }}"
+    <form method="POST" action="{{ $postUrl ?? route('site.survey.store', ['siteCode' => $site->site_code]) }}"
           class="mt-4 space-y-6">
         @csrf
         <input type="hidden" name="idempotency_key" value="{{ $idempotencyKey }}">

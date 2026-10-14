@@ -198,3 +198,28 @@ On a phone that has joined the SSID and has not been authenticated:
 4. Confirm `status` reports `completed: true` for that session.
 5. Repeat on iOS: its portal detection is stricter than Android's, and an
    untrusted certificate stops the portal from appearing at all.
+
+## Adapter appendix: Omada External Portal Server (verified live)
+
+Reference: TP-Link doc 13080 (controller v5.0.15–6.2.0).
+
+**Receive side** (`GET /portal/omada/{siteCode}`): Omada appends unsigned
+`clientMac, apMac, ssidName, t, radioId, site, redirectUrl`. Observed live on
+DICT Centralized Omada: `t` arrives in SECONDS (not the documented
+microseconds) and `site` is an opaque controller-side ID, not the site name.
+The adapter binds the site via the URL path, enforces freshness on `t`
+(seconds/ms/µs by magnitude), and records submissions as unverified
+(`site_link`) — the same POST path as the public form.
+
+**Authorize-back** (`OmadaHotspotClient`): hotspot-operator login
+(`POST {controller}/{id}/api/v2/hotspot/login` → CSRF token + session cookie)
+then `POST {controller}/{id}/api/v2/hotspot/extPortal/auth` with the client's
+connection parameters and `authType: 4`. Needs a hotspot operator account
+(created in the controller's hotspot manager) plus the controller ID from its
+URL — configured via `OMADA_CONTROLLER_ID`, `OMADA_HOTSPOT_OPERATOR`,
+`OMADA_HOTSPOT_PASSWORD`. Unconfigured or unreachable → graceful false, honest
+messaging, never a faked authorization.
+
+**After submit**: the thanks page counts down 5 seconds (plain JS + noscript
+fallback) while the controller processes the authorization, then tells the
+user whether they should be online.
