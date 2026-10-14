@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\AssignCorrelationId;
+use App\Http\Middleware\EnsureSimulatorEnabled;
 use App\Services\Portal\PortalContractException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -20,7 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
         then: function (): void {
-            Route::middleware('web')
+            Route::middleware([EnsureSimulatorEnabled::class, 'web'])
                 ->group(base_path('routes/simulator.php'));
         },
     )
