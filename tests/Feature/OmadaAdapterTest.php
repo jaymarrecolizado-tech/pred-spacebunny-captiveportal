@@ -211,6 +211,9 @@ class OmadaAdapterTest extends TestCase
             ->get(route('portal.omada.thanks', ['siteCode' => $site->site_code]))
             ->assertOk()
             ->assertSee('id="count"', escape: false)
+            // No auto-redirect of any kind, and no hardcoded destination.
+            ->assertDontSee('http-equiv="refresh"', escape: false)
+            ->assertDontSee('location.replace')
             ->assertDontSee('e.gov.ph');
     }
 }
