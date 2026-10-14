@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Portal\OmadaAdapterController;
 use App\Http\Controllers\Portal\PortalSessionController;
 use App\Http\Controllers\PublicSurveyController;
 use Illuminate\Support\Facades\Route;
@@ -37,3 +38,9 @@ Route::prefix('portal/session/{session}')->name('portal.')->group(function (): v
 });
 
 Route::view('portal/unavailable', 'portal.unavailable')->name('portal.unavailable');
+
+/*
+| Omada External Portal Server adapter (receive side). Omada appends its
+| unsigned handoff parameters to this URL; the site is bound via the path.
+*/
+Route::get('portal/omada/{siteCode}', [OmadaAdapterController::class, 'show'])->name('portal.omada');
