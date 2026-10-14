@@ -44,3 +44,7 @@ Route::view('portal/unavailable', 'portal.unavailable')->name('portal.unavailabl
 | unsigned handoff parameters to this URL; the site is bound via the path.
 */
 Route::get('portal/omada/{siteCode}', [OmadaAdapterController::class, 'show'])->name('portal.omada');
+Route::post('portal/omada/{siteCode}', [OmadaAdapterController::class, 'store'])
+    ->middleware('throttle:public-submit')
+    ->name('portal.omada.store');
+Route::get('portal/omada/{siteCode}/thanks', [OmadaAdapterController::class, 'thanks'])->name('portal.omada.thanks');

@@ -43,4 +43,23 @@ return [
     */
     'simulator_enabled' => (bool) env('PORTAL_SIMULATOR_ENABLED', env('APP_ENV') === 'local'),
 
+    /*
+    | Authorization duration granted to a client that completes the survey,
+    | in microseconds (TP-Link doc 13080). Default: 8 hours.
+    */
+    'auth_duration_microseconds' => (int) env('PORTAL_AUTH_DURATION_US', 8 * 3600 * 1000000),
+
+    /*
+    | Omada hotspot operator used for the authorize-back call. This is the
+    | operator account created in the controller's hotspot manager — not the
+    | controller admin and not the OpenAPI client credentials. The controller
+    | ID is the 32-hex segment in the controller's own URL.
+    */
+    'omada' => [
+        'controller_url' => env('OMADA_CONTROLLER_URL'),
+        'controller_id' => env('OMADA_CONTROLLER_ID'),
+        'operator_username' => env('OMADA_HOTSPOT_OPERATOR'),
+        'operator_password' => env('OMADA_HOTSPOT_PASSWORD'),
+    ],
+
 ];

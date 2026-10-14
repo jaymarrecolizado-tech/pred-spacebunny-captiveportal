@@ -2,8 +2,12 @@
 
 namespace App\Http\Controllers\Portal;
 
+use App\Enums\AttributionMethod;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreSurveyResponseRequest;
 use App\Models\Site;
+use App\Services\Portal\OmadaHotspotClient;
+use App\Services\Responses\SubmitResponse;
 use App\Services\Surveys\ResolveSurvey;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Str;
@@ -21,16 +25,17 @@ use Illuminate\View\View;
  * site name. The adapter therefore binds the site via the URL path, never via
  * the site parameter, and accepts all three time units.
  *
- * Because the parameters are unsigned, this adapter proves REDIRECT only: the
- * survey is shown and submissions are recorded with unverified attribution,
- * exactly like a site link. Verified attribution and the authorize-back call
- * to the controller arrive with controller API access (adapter, second half).
- * Nothing here grants network access.
+ * After the survey, the adapter attempts the documented authorize-back call
+ * (hotspot-operator login → extPortal/auth). Until working operator
+ * credentials exist, that attempt degrades gracefully and the user is told
+ * the truth instead of being promised internet.
  */
 class OmadaAdapterController extends Controller
 {
     public function __construct(
         private readonly ResolveSurvey $resolveSurvey,
+        private readonly SubmitResponse $submitResponse,
+        private readonly OmadaHotspotClient $hotspot,
     ) {}
 
     public function show(string $siteCode): View|RedirectResponse
@@ -47,12 +52,68 @@ class OmadaAdapterController extends Controller
             return redirect()->route('portal.unavailable');
         }
 
-        // Same view and POST path as the public survey, so validation,
-        // deduplication and (unverified) attribution cannot drift apart.
+        // Same view as the public survey, but posting back here so the
+        // Omada handoff parameters survive to the authorize step.
         return view('public.survey', [
             'site' => $site,
             'resolved' => $resolved,
             'idempotencyKey' => (string) Str::uuid(),
+            'postUrl' => route('portal.omada.store', ['siteCode' => $site->site_code])
+                .'?'.http_build_query(request()->query()),
+        ]);
+    }
+
+    public function store(string $siteCode, StoreSurveyResponseRequest $request): RedirectResponse
+    {
+        $site = Site::query()->where('site_code', $siteCode)->first();
+        $handoff = $request->query();
+
+        // The handoff is re-validated on POST: the form URL alone must never
+        // be enough to submit through this path.
+        if ($site === null || ! $this->validHandoff($handoff)) {
+            return redirect()->route('portal.unavailable');
+        }
+
+        $resolved = $this->resolveSurvey->forSite($site);
+
+        if ($resolved === null) {
+            return redirect()->route('portal.unavailable');
+        }
+
+        $clean = $this->submitResponse->validateAnswers($resolved->version, $request->validated('answers'));
+
+        $response = $this->submitResponse->handle(
+            site: $site,
+            resolved: $resolved,
+            answers: $clean,
+            // Unsigned redirect: unverified, exactly like a site link.
+            attribution: AttributionMethod::SiteLink,
+            idempotencyKey: $request->validated('idempotency_key'),
+            // Hashed server-side; lets a later authorize verification correlate.
+            sessionReference: $handoff['clientMac'],
+        );
+
+        $authorized = $this->hotspot->authorize([
+            'clientMac' => $handoff['clientMac'],
+            'apMac' => $handoff['apMac'],
+            'ssidName' => $handoff['ssidName'] ?? '',
+            'radioId' => $handoff['radioId'] ?? '0',
+            'site' => $handoff['site'] ?? '',
+        ]);
+
+        return redirect()->route('portal.omada.thanks', ['siteCode' => $site->site_code])
+            ->with('authorized', $authorized)
+            ->with('reference', substr($response->id, 0, 8));
+    }
+
+    public function thanks(string $siteCode): View
+    {
+        $site = Site::query()->where('site_code', $siteCode)->firstOrFail();
+
+        return view('portal.omada-thanks', [
+            'site' => $site,
+            'authorized' => session('authorized', false),
+            'reference' => session('reference'),
         ]);
     }
 
@@ -90,8 +151,8 @@ class OmadaAdapterController extends Controller
 
     /**
      * TP-Link documents microseconds, but real controllers send seconds (seen
-     * live: a 10-digit t). Accept seconds, milliseconds and microseconds by
-     * magnitude so a unit change can never silently refuse every handoff.
+     * live). Accept seconds, milliseconds and microseconds by magnitude so a
+     * unit change can never silently refuse every handoff.
      */
     private function issuedAtSeconds(string $t): ?float
     {

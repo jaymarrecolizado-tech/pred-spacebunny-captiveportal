@@ -124,4 +124,66 @@ class OmadaAdapterTest extends TestCase
         $this->assertSame(AttributionMethod::SiteLink, $stored->attribution_method);
         $this->assertFalse($stored->attribution_method->isVerified());
     }
+
+    public function test_a_submission_through_the_adapter_post_counts_down(): void
+    {
+        [$site] = $this->activeSiteWithSurvey(['integration_mode' => IntegrationMode::CaptivePortal]);
+        $postUrl = route('portal.omada.store', ['siteCode' => $site->site_code]).'?'.http_build_query($this->handoffInSeconds());
+
+        // No hotspot operator is configured in testing, so authorization
+        // degrades gracefully instead of failing.
+        $this->post($postUrl, [
+            'answers' => $this->validAnswers(),
+            'idempotency_key' => (string) Str::uuid(),
+        ])->assertRedirect(route('portal.omada.thanks', ['siteCode' => $site->site_code]));
+
+        $stored = SurveyResponse::sole();
+        $this->assertSame(AttributionMethod::SiteLink, $stored->attribution_method);
+        // The client MAC is kept as a hashed correlation, never raw.
+        $this->assertSame(hash('sha256', 'AA-BB-CC-DD-EE-FF'), $stored->session_reference_hash);
+
+        $this->followRedirects($this->post($postUrl, [
+            'answers' => $this->validAnswers(),
+            'idempotency_key' => (string) Str::uuid(),
+        ]))
+            // No operator configured: honest fallback, no counter, no promise.
+            ->assertSee("couldn't connect you automatically", escape: false)
+            ->assertDontSee('id="count"', escape: false);
+    }
+
+    public function test_a_post_without_a_handoff_is_refused(): void
+    {
+        [$site] = $this->activeSiteWithSurvey();
+
+        $this->post(route('portal.omada.store', ['siteCode' => $site->site_code]), [
+            'answers' => $this->validAnswers(),
+            'idempotency_key' => (string) Str::uuid(),
+        ])->assertRedirect(route('portal.unavailable'));
+
+        $this->assertSame(0, SurveyResponse::count());
+    }
+
+    public function test_a_post_with_bad_answers_is_rejected(): void
+    {
+        [$site] = $this->activeSiteWithSurvey();
+        $postUrl = route('portal.omada.store', ['siteCode' => $site->site_code]).'?'.http_build_query($this->handoffInSeconds());
+
+        $this->post($postUrl, [
+            'answers' => ['rating' => 99, 'issue_type' => 'none'],
+            'idempotency_key' => (string) Str::uuid(),
+        ])->assertSessionHasErrors('answers.rating');
+
+        $this->assertSame(0, SurveyResponse::count());
+    }
+
+    public function test_the_thanks_page_without_a_session_is_honest(): void
+    {
+        [$site] = $this->activeSiteWithSurvey();
+
+        // Opened directly, with no submission behind it: no counter, no claim.
+        $this->get(route('portal.omada.thanks', ['siteCode' => $site->site_code]))
+            ->assertOk()
+            ->assertSee('Thank you')
+            ->assertDontSee('id="count"', escape: false);
+    }
 }
