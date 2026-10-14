@@ -6,6 +6,13 @@
     <title>@yield('title', 'Free Wi-Fi Feedback')</title>
     <meta name="robots" content="noindex, nofollow">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <style>
+        .star-rating{display:flex;flex-direction:row-reverse;justify-content:flex-end;gap:.1rem}
+        .star-rating input{position:absolute;opacity:0}
+        .star-rating label{font-size:2.5rem;line-height:1;color:#cbd5e1;cursor:pointer;padding:.1rem;user-select:none}
+        .star-rating label:hover,.star-rating label:hover~label,.star-rating input:checked~label{color:#f59e0b}
+        .star-rating input:focus-visible+label{outline:2px solid #0f172a;outline-offset:2px;border-radius:.25rem}
+    </style>
 </head>
 <body class="h-full bg-slate-100 text-slate-900 antialiased">
     <div class="flex min-h-full flex-col">

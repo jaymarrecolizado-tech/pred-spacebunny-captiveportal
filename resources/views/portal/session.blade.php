@@ -45,17 +45,18 @@
                     @if (! empty($question['help']))
                         <p class="mt-1 text-sm text-slate-600">{{ $question['help'] }}</p>
                     @endif
-                    <div class="mt-3 grid grid-cols-5 gap-2">
-                        @for ($i = $question['min'] ?? 1; $i <= $question['max'] ?? 5; $i++)
-                            <label class="flex min-h-12 cursor-pointer items-center justify-center rounded-lg border border-slate-300 text-lg font-semibold
-                                        focus-within:ring-2 focus-within:ring-slate-900 focus-within:ring-offset-2
-                                        {{ (string) $old === (string) $i ? 'border-slate-900 bg-slate-900 text-white' : 'bg-white' }}">
-                                <input type="radio" name="answers[{{ $key }}]" value="{{ $i }}" class="sr-only"
-                                       @checked((string) $old === (string) $i)>
-                                <span>{{ $i }}</span>
-                            </label>
+                    @php $rMin = $question['min'] ?? 1; $rMax = $question['max'] ?? 5; @endphp
+                    <div class="star-rating mt-3">
+                        @for ($i = $rMax; $i >= $rMin; $i--)
+                            <input type="radio" id="portal-{{ $key }}-{{ $i }}" name="answers[{{ $key }}]"
+                                   value="{{ $i }}" aria-label="{{ $i }} out of {{ $rMax }} stars"
+                                   @checked((string) $old === (string) $i)
+                                   @if ($question['required'] ?? false) required @endif>
+                            <label for="portal-{{ $key }}-{{ $i }}" title="{{ $i }} star{{ $i > 1 ? 's' : '' }}"
+                                   aria-hidden="true">★</label>
                         @endfor
                     </div>
+                    <p class="mt-1 text-xs text-slate-500">Tap a star: {{ $rMin }} = poor, {{ $rMax }} = excellent.</p>
                 </fieldset>
             @elseif (($question['type'] ?? null) === 'single_choice')
                 <fieldset>
