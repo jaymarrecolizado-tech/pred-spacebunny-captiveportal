@@ -24,6 +24,7 @@ class OmadaAdapterTest extends TestCase
      */
     private function handoff(?int $ageSeconds = 0): array
     {
+        // Microseconds, per the TP-Link documentation.
         $t = (int) ((microtime(true) - ($ageSeconds ?? 0)) * 1_000_000);
 
         return [
@@ -36,6 +37,19 @@ class OmadaAdapterTest extends TestCase
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
+    private function handoffInSeconds(?int $ageSeconds = 0): array
+    {
+        // What the real controller actually sends (seen live in access logs).
+        $params = $this->handoff($ageSeconds);
+        $params['t'] = (string) (time() - ($ageSeconds ?? 0));
+        $params['site'] = '68e88354bb5fdb13e8af0451';
+
+        return $params;
+    }
+
     public function test_a_valid_handoff_opens_the_survey(): void
     {
         [$site] = $this->activeSiteWithSurvey();
@@ -44,6 +58,15 @@ class OmadaAdapterTest extends TestCase
             ->assertOk()
             ->assertSee($site->name)
             ->assertSee('★', escape: false);
+    }
+
+    public function test_a_handoff_in_seconds_opens_the_survey(): void
+    {
+        [$site] = $this->activeSiteWithSurvey();
+
+        $this->get(route('portal.omada', ['siteCode' => $site->site_code]).'?'.http_build_query($this->handoffInSeconds()))
+            ->assertOk()
+            ->assertSee($site->name);
     }
 
     public function test_a_bare_url_without_handoff_parameters_is_refused(): void
@@ -60,6 +83,9 @@ class OmadaAdapterTest extends TestCase
         [$site] = $this->activeSiteWithSurvey();
 
         $this->get(route('portal.omada', ['siteCode' => $site->site_code]).'?'.http_build_query($this->handoff(3600)))
+            ->assertRedirect(route('portal.unavailable'));
+
+        $this->get(route('portal.omada', ['siteCode' => $site->site_code]).'?'.http_build_query($this->handoffInSeconds(3600)))
             ->assertRedirect(route('portal.unavailable'));
     }
 

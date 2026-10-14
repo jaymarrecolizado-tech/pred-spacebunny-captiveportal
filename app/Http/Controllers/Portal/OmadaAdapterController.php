@@ -14,8 +14,12 @@ use Illuminate\View\View;
  *
  * Omada redirects the client's browser to the configured URL and appends
  * UNSIGNED query parameters (TP-Link doc 13080, controller 5.0.15–6.2.0):
- * clientMac, apMac, ssidName, t (microseconds since epoch), radioId, site,
- * redirectUrl.
+ * clientMac, apMac, ssidName, t, radioId, site, redirectUrl.
+ *
+ * Observed live on DICT Centralized Omada: t arrives in SECONDS (not the
+ * documented microseconds) and site is an opaque controller-side ID, not the
+ * site name. The adapter therefore binds the site via the URL path, never via
+ * the site parameter, and accepts all three time units.
  *
  * Because the parameters are unsigned, this adapter proves REDIRECT only: the
  * survey is shown and submissions are recorded with unverified attribution,
@@ -71,11 +75,36 @@ class OmadaAdapterController extends Controller
             return false;
         }
 
-        // t is microseconds since epoch. A stale handoff opens nothing: the
-        // user reconnects and Omada issues a fresh one.
-        $issuedAt = ((float) $query['t']) / 1_000_000;
+        $issuedAt = $this->issuedAtSeconds((string) $query['t']);
+
+        if ($issuedAt === null) {
+            return false;
+        }
+
+        // A stale handoff opens nothing: the user reconnects and Omada issues
+        // a fresh one.
         $window = max(1, (int) config('portal.session_ttl_minutes', 15)) * 60;
 
         return abs(time() - $issuedAt) <= $window;
+    }
+
+    /**
+     * TP-Link documents microseconds, but real controllers send seconds (seen
+     * live: a 10-digit t). Accept seconds, milliseconds and microseconds by
+     * magnitude so a unit change can never silently refuse every handoff.
+     */
+    private function issuedAtSeconds(string $t): ?float
+    {
+        $digits = ltrim(trim($t), '0');
+
+        if ($digits === '' || ! ctype_digit($digits)) {
+            return null;
+        }
+
+        return match (true) {
+            strlen($digits) <= 10 => (float) $digits,
+            strlen($digits) <= 13 => ((float) $digits) / 1_000,
+            default => ((float) $digits) / 1_000_000,
+        };
     }
 }
