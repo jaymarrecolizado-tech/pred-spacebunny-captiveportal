@@ -45,13 +45,18 @@ class OmadaHotspotClient
         }
 
         try {
-            $token = $this->login();
+            // One client for both calls: the cookie jar carries the session
+            // (TPEAP_SESSIONID or TPOMADA_SESSIONID, depending on controller
+            // version) from login to authorize. A fresh jar per call silently
+            // drops the session and the authorize is rejected.
+            $http = $this->http();
+            $token = $this->login($http);
 
             if ($token === null) {
                 return false;
             }
 
-            return $this->authorizeClient($token, $client);
+            return $this->authorizeClient($http, $token, $client);
         } catch (\Throwable $e) {
             // The controller is unreachable or answered unexpectedly. That is
             // a normal failure mode (fail-open messaging), not a 500.
@@ -68,9 +73,9 @@ class OmadaHotspotClient
      * Hotspot-operator login. Returns the CSRF token, keeping the session
      * cookie in the shared jar for the authorize call.
      */
-    private function login(): ?string
+    private function login(PendingRequest $http): ?string
     {
-        $response = $this->http()->post($this->url('api/v2/hotspot/login'), [
+        $response = $http->post($this->url('api/v2/hotspot/login'), [
             'name' => config('portal.omada.operator_username'),
             'password' => config('portal.omada.operator_password'),
         ]);
@@ -91,9 +96,9 @@ class OmadaHotspotClient
     /**
      * @param  array{clientMac: string, apMac: string, ssidName: string, radioId: string, site: string}  $client
      */
-    private function authorizeClient(string $token, array $client): bool
+    private function authorizeClient(PendingRequest $http, string $token, array $client): bool
     {
-        $response = $this->http()->withHeader('Csrf-Token', $token)->post(
+        $response = $http->withHeader('Csrf-Token', $token)->post(
             $this->url('api/v2/hotspot/extPortal/auth'),
             [
                 'clientMac' => $client['clientMac'],
