@@ -17,12 +17,20 @@
             <noscript>
                 <p class="mt-4 text-sm text-slate-600">Wait a few seconds, then try opening a website.</p>
             </noscript>
+            @if ($successUrl)
+                <p class="mt-4 text-sm" id="continue-wrap">
+                    <a href="{{ $successUrl }}" class="font-semibold text-slate-900 underline">Continue browsing →</a>
+                </p>
+            @endif
             <script>
                 (function () {
                     var n = 5;
                     var el = document.getElementById('count');
                     var label = document.getElementById('count-label');
                     var final = document.getElementById('final');
+                    @if ($successUrl)
+                        var destination = @json($successUrl);
+                    @endif
                     var t = setInterval(function () {
                         n--;
                         if (n <= 0) {
@@ -30,6 +38,9 @@
                             el.classList.add('hidden');
                             label.classList.add('hidden');
                             final.classList.remove('hidden');
+                            @if ($successUrl)
+                                window.location.href = destination;
+                            @endif
                         } else {
                             el.textContent = n;
                         }

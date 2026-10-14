@@ -62,4 +62,11 @@ return [
         'operator_password' => env('OMADA_HOTSPOT_PASSWORD'),
     ],
 
+    /*
+    | Where the portal thanks page sends an authorized user after the
+    | countdown. Admin-configured (env), never taken from the user-editable
+    | redirectUrl parameter. Empty = stay on the thanks page.
+    */
+    'success_url' => env('PORTAL_SUCCESS_URL'),
+
 ];
