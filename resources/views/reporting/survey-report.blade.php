@@ -84,8 +84,12 @@
             tr, .tile { page-break-inside: avoid; break-inside: avoid; }
 
             h2 { page-break-after: avoid; break-after: avoid; }
-            .page { page-break-after: always; break-after: page; }
-            .page:last-child { page-break-after: auto; break-after: auto; }
+
+            /* Page 1 is the summary on its own; the supporting data starts on a
+               fresh page behind it, so the headline figures are never split from
+               their heading or stranded at the bottom of a page. */
+            .summary-block { page-break-after: always; break-after: page; }
+            .summary-block:last-of-type { page-break-after: auto; break-after: auto; }
         }
     </style>
 </head>
@@ -107,9 +111,11 @@
     Contains only the data this account is permitted to see.
 </p>
 
-{{-- Summary --}}
-<h2>Summary</h2>
-<div class="tiles">
+{{-- Summary. Class marks the end of page 1: the supporting data always starts
+     on a fresh page behind it, in every output format. --}}
+<div class="summary-block">
+    <h2 style="margin-top:0;">Summary</h2>
+    <div class="tiles">
     @php
         $rated = (int) ($totals['rated'] ?? 0);
         $deviceResponses = (int) ($totals['device_responses'] ?? 0);
@@ -209,6 +215,7 @@
         </table>
     </div>
 </div>
+</div>{{-- /summary-block: page 1 ends here --}}
 
 {{-- Appendix: every individual response as one continuous table; CSS breaks the pages --}}
 <h2>Appendix — individual responses</h2>

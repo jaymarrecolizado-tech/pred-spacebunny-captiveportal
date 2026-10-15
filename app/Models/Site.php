@@ -7,6 +7,7 @@ use App\Enums\IntegrationMode;
 use App\Enums\IntegrationStatus;
 use App\Enums\RecordStatus;
 use App\Enums\ScopeType;
+use App\Enums\SurveyTriggerMode;
 use App\Models\Concerns\Auditable;
 use Database\Factories\SiteFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -59,6 +60,8 @@ class Site extends Model
             'integration_mode' => IntegrationMode::class,
             'integration_status' => IntegrationStatus::class,
             'status' => RecordStatus::class,
+            'survey_trigger_mode' => SurveyTriggerMode::class,
+            'survey_trigger_days' => 'integer',
             'latitude' => 'float',
             'longitude' => 'float',
             'commissioned_at' => 'date',

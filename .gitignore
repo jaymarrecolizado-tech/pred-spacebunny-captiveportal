@@ -30,3 +30,7 @@ Thumbs.db
 
 # graphify knowledge graph (generated, ~2MB, rebuilt by post-commit hook)
 graphify-out/
+
+# Omada OpenAPI secret, kept in its own one-line file so it cannot be
+# pasted into the wrong field. Never committed.
+.omada.secret

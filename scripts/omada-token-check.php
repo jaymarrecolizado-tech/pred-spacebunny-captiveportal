@@ -10,8 +10,8 @@
  *
  * Usage: php scripts/omada-token-check.php
  */
-
 $envFile = __DIR__.'/../.omada.local.env';
+$secretFile = __DIR__.'/../.omada.secret';
 
 if (! is_file($envFile)) {
     fwrite(STDERR, "Missing $envFile\n");
@@ -32,7 +32,24 @@ foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line)
     $values[trim($key)] = trim($value);
 }
 
-$required = ['OMADA_OPENAPI_CLIENT_ID', 'OMADA_OPENAPI_CLIENT_SECRET', 'OMADA_OPENAPI_OMADAC_ID'];
+// The secret lives in its own single-line file. Keeping it separate from the
+// other fields means a pasted value cannot land on the wrong line - which is
+// exactly the mistake that put a client ID into the omadacId field once already.
+$secret = is_file($secretFile)
+    ? trim((string) file_get_contents($secretFile))
+    : ($values['OMADA_OPENAPI_CLIENT_SECRET'] ?? '');
+
+// Editors and PowerShell happily prepend a UTF-8 BOM (EF BB BF). Three stray
+// bytes at the front of a credential are enough to make the controller reject it
+// with -44106 while the value looks correct to the eye, so strip it.
+$secret = preg_replace('/^\xEF\xBB\xBF/', '', $secret) ?? $secret;
+$secret = trim($secret);
+
+if (str_contains($secret, 'PASTE_')) {
+    $secret = '';
+}
+
+$required = ['OMADA_OPENAPI_CLIENT_ID', 'OMADA_OPENAPI_OMADAC_ID'];
 
 foreach ($required as $key) {
     if (($values[$key] ?? '') === '') {
@@ -42,17 +59,26 @@ foreach ($required as $key) {
     }
 }
 
+if ($secret === '') {
+    fwrite(STDERR, "Missing client secret. Put it on line 1 of .omada.secret\n");
+
+    exit(1);
+}
+
+$values['OMADA_OPENAPI_CLIENT_SECRET'] = $secret;
+
 $secretLength = strlen($values['OMADA_OPENAPI_CLIENT_SECRET']);
-echo "secret loaded ({$secretLength} chars)\n";
+echo "secret loaded ({$secretLength} chars) from .omada.secret\n";
 echo 'omadacId: '.$values['OMADA_OPENAPI_OMADAC_ID']."\n\n";
 
 // Explicit base URL wins; otherwise try the regions in likely order.
+// These are TP-Link's northbound cloud endpoints, not omadanetworks.com.
 $baseUrls = $values['OMADA_OPENAPI_BASE_URL'] !== ''
-    ? [$values['OMADA_OPENAPI_BASE_URL']]
+    ? ['configured' => $values['OMADA_OPENAPI_BASE_URL']]
     : [
-        'ap (Asia Pacific)' => 'https://openapi-aps.omadanetworks.com',
-        'eu (Europe)' => 'https://openapi-eu.omadanetworks.com',
-        'us (North America)' => 'https://openapi-us.omadanetworks.com',
+        'ap (Asia Pacific / Singapore)' => 'https://aps1-omada-northbound.tplinkcloud.com',
+        'eu (Europe)' => 'https://euw1-omada-northbound.tplinkcloud.com',
+        'us (North America)' => 'https://use1-omada-northbound.tplinkcloud.com',
     ];
 
 foreach ($baseUrls as $label => $baseUrl) {
@@ -60,12 +86,24 @@ foreach ($baseUrls as $label => $baseUrl) {
 
     echo "--- {$label}: {$baseUrl}\n";
 
-    $url = $baseUrl.'/openapi/authorize/token?grant_type=client_credentials';
+    // "Interface Access Address" already ends in /openapi; the cloud northbound
+    // endpoints do not. Appending /openapi blindly yields /openapi/openapi.
+    $url = (str_ends_with($baseUrl, '/openapi')
+        ? $baseUrl.'/authorize/token'
+        : $baseUrl.'/openapi/authorize/token')
+        .'?grant_type=client_credentials';
+
     $payload = json_encode([
         'omadacId' => $values['OMADA_OPENAPI_OMADAC_ID'],
         'client_id' => $values['OMADA_OPENAPI_CLIENT_ID'],
         'client_secret' => $values['OMADA_OPENAPI_CLIENT_SECRET'],
     ]);
+
+    // The controller serves its factory self-signed certificate. The working
+    // hotspot client already accepts that (see OmadaHotspotClient), so this is
+    // consistent rather than new: it confirms we reached the controller we were
+    // configured to talk to, it is not a public PKI identity check.
+    $verifyTls = ($values['OMADA_OPENAPI_VERIFY_TLS'] ?? 'false') === 'true';
 
     $ch = curl_init($url);
     curl_setopt_array($ch, [
@@ -74,7 +112,8 @@ foreach ($baseUrls as $label => $baseUrl) {
         CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 30,
-        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_SSL_VERIFYPEER => $verifyTls,
+        CURLOPT_SSL_VERIFYHOST => $verifyTls ? 2 : 0,
     ]);
 
     $body = curl_exec($ch);
@@ -110,7 +149,7 @@ foreach ($baseUrls as $label => $baseUrl) {
         $expires = $decoded['result']['expiresIn'] ?? '?';
 
         // Length only. Never the value.
-        echo "  SUCCESS - accessToken obtained (".strlen($token)." chars), expiresIn={$expires}s\n";
+        echo '  SUCCESS - accessToken obtained ('.strlen($token)." chars), expiresIn={$expires}s\n";
         echo "  token value withheld on purpose.\n\n";
 
         // Stop at the first success rather than spraying requests at every region.

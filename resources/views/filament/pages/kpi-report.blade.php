@@ -94,8 +94,7 @@
                 >
                     Save as PDF
                 </x-filament::button>
-            </x-slot>
-        </x-filament::section>
+            </x-slot>        </x-filament::section>
     </form>
 
     {{-- Headline figures. --}}
@@ -121,6 +120,42 @@
             </x-filament::section>
         @endforeach
     </div>
+
+    {{-- Download buttons: the same report and the same filters, in four formats.
+         Each renders the one ReportDocument, so the figures cannot disagree. --}}
+    <x-filament::section icon="heroicon-o-arrow-down-tray" heading="Download this report" class="mt-6">
+        <p class="fi-section-header-description">
+            Every file leads with the summary, followed by the supporting data, and honours the filters above
+            and your access scope.
+        </p>
+        <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.75rem;">
+            @php
+                $downloads = [
+                    ['text' => 'PDF', 'route' => 'reports.survey', 'icon' => 'heroicon-o-document-text', 'hint' => 'Print or save as PDF', 'format' => null],
+                    ['text' => 'Spreadsheet', 'route' => 'reports.survey.download', 'icon' => 'heroicon-o-table-cells', 'hint' => 'Two sheets: summary, then responses', 'format' => 'xlsx'],
+                    ['text' => 'CSV', 'route' => 'reports.survey.download', 'icon' => 'heroicon-o-clipboard-document-list', 'hint' => 'Summary block, then the response rows', 'format' => 'csv'],
+                    ['text' => 'XML', 'route' => 'reports.survey.download', 'icon' => 'heroicon-o-code-bracket', 'hint' => 'Structured, for another system to read', 'format' => 'xml'],
+                ];
+            @endphp
+
+            @foreach ($downloads as $download)
+                <x-filament::button
+                    tag="a"
+                    :href="route($download['route'], array_merge(
+                        $activeFilters,
+                        $download['format'] === null ? [] : ['format' => $download['format']],
+                    ))"
+                    color="gray"
+                    outlined
+                    size="sm"
+                    :icon="$download['icon']"
+                    :title="$download['hint']"
+                >
+                    {{ $download['text'] }}
+                </x-filament::button>
+            @endforeach
+        </div>
+    </x-filament::section>
 
     {{-- Verified vs unverified (FR-REP-006). --}}
     <x-filament::section icon="heroicon-o-shield-check" heading="Attribution" class="mb-6">
