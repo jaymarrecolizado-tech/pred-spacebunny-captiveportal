@@ -24,3 +24,6 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# graphify knowledge graph (generated, ~2MB, rebuilt by post-commit hook)
+graphify-out/
