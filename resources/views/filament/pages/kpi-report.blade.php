@@ -97,28 +97,107 @@
             </x-slot>        </x-filament::section>
     </form>
 
-    {{-- Headline figures. --}}
-    <div style="display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(12rem,1fr));margin-block:1.5rem;">
+    {{-- Headline figures, colour coded. The colour is not decoration: a rating
+         below 3 reads red and a positive rate reads green, so trouble is visible
+         before the numbers are read. --}}
+    <div style="display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));margin-block:1.5rem;">
         @php
             $rated = (int) ($totals['rated'] ?? 0);
+            $avg = $totals['average_rating'] ?? null;
+            $issueRate = $totals['issue_rate'] ?? null;
+
+            // Colour follows the figure, not the label.
+            $avgColour = $avg === null ? '#64748b' : ($avg >= 4 ? '#15803d' : ($avg >= 3 ? '#b45309' : '#b91c1c'));
+            $avgFill = $avg === null ? '#f1f5f9' : ($avg >= 4 ? '#f0fdf4' : ($avg >= 3 ? '#fffbeb' : '#fef2f2'));
+
             $tiles = [
-                ['label' => 'Total responses', 'value' => (int) ($totals['responses'] ?? 0), 'note' => 'All responses in scope for these filters.'],
-                ['label' => 'Average rating', 'value' => $totals['average_rating'] ?? null, 'note' => $rated === 0 ? 'No rated responses yet.' : 'From '.$rated.' rated response'.($rated === 1 ? '' : 's').'.'],
-                ['label' => 'Positive responses', 'value' => ($totals['positive_rate'] ?? null) === null ? null : $totals['positive_rate'].'%', 'note' => 'Rating of '.$positiveThreshold.' or more, from '.$rated.' rated response'.($rated === 1 ? '' : 's').'.'],
-                ['label' => 'Connection issue rate', 'value' => ($totals['issue_rate'] ?? null) === null ? null : $totals['issue_rate'].'%', 'note' => 'Share of all responses reporting a connection problem.'],
+                ['label' => 'Total responses', 'value' => (int) ($totals['responses'] ?? 0), 'note' => 'All responses in scope for these filters.', 'colour' => '#1d4ed8', 'fill' => '#eff6ff'],
+                ['label' => 'Average rating', 'value' => $avg, 'note' => $rated === 0 ? 'No rated responses yet.' : 'Out of 5, from '.$rated.' rated response'.($rated === 1 ? '' : 's').'.', 'colour' => $avgColour, 'fill' => $avgFill],
+                ['label' => 'Positive responses', 'value' => ($totals['positive_rate'] ?? null) === null ? null : $totals['positive_rate'].'%', 'note' => 'Rating of '.$positiveThreshold.' or more.', 'colour' => '#15803d', 'fill' => '#f0fdf4'],
+                ['label' => 'Connection issue rate', 'value' => $issueRate === null ? null : $issueRate.'%', 'note' => $issueRate === null ? 'Nothing to report yet.' : ($issueRate > 20 ? 'High — worth investigating.' : ($issueRate > 0 ? 'Some connections are failing.' : 'No connection problems reported.')), 'colour' => $issueRate === null ? '#64748b' : ($issueRate > 20 ? '#b91c1c' : '#b45309'), 'fill' => $issueRate === null ? '#f1f5f9' : '#fffbeb'],
             ];
         @endphp
 
         @foreach ($tiles as $tile)
-            <x-filament::section compact :heading="$tile['label']">
-                <div style="font-size:1.875rem;font-weight:700;line-height:1.1;letter-spacing:-.02em;">
-                    {{ $tile['value'] ?? '—' }}
-                </div>
-                <div class="fi-section-header-description" style="margin-top:.35rem;">
-                    {{ $tile['note'] }}
-                </div>
-            </x-filament::section>
+            <div style="border:1px solid rgba(128,128,128,.25);border-left:4px solid {{ $tile['colour'] }};border-radius:.6rem;padding:.9rem 1rem;background:{{ $tile['fill'] }};">
+                <div style="font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;opacity:.7;">{{ $tile['label'] }}</div>
+                <div style="font-size:2rem;font-weight:700;line-height:1.1;color:{{ $tile['colour'] }};letter-spacing:-.02em;">{{ $tile['value'] ?? '—' }}</div>
+                <div style="font-size:.75rem;opacity:.7;margin-top:.3rem;">{{ $tile['note'] }}</div>
+            </div>
         @endforeach
+    </div>
+
+    {{-- Charts. Drawn with CSS bars and an inline SVG ring: no chart library, no
+         build step, and nothing extra to deploy to the server. --}}
+    @php
+        $siteRows = array_slice($bySite, 0, 10);
+        $maxSiteResponses = max(1, max(array_column($siteRows ?: [['responses' => 1]], 'responses')));
+        $palette = ['#2563eb', '#0891b2', '#7c3aed', '#c026d3', '#db2777', '#ea580c', '#ca8a04', '#65a30d', '#059669', '#0d9488'];
+        $issueTotal = array_sum(array_column($byIssue, 'total'));
+    @endphp
+
+    <div style="display:grid;gap:1.5rem;grid-template-columns:repeat(auto-fit,minmax(20rem,1fr));">
+        {{-- Bar chart: responses per site. --}}
+        <x-filament::section icon="heroicon-o-chart-bar" heading="Responses by location">
+            @forelse ($siteRows as $i => $row)
+                @php $pct = round($row['responses'] / $maxSiteResponses * 100, 1); @endphp
+                <div style="display:grid;grid-template-columns:minmax(6rem,9rem) 1fr auto;align-items:center;gap:.6rem;margin-bottom:.45rem;">
+                    <div style="font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ $row['label'] }}">{{ $row['label'] }}</div>
+                    <div style="background:rgba(128,128,128,.18);border-radius:999px;height:.85rem;overflow:hidden;">
+                        <div style="width:{{ $pct }}%;height:100%;border-radius:999px;background:{{ $palette[$i % 10] }};"></div>
+                    </div>
+                    <div style="font-size:.78rem;font-weight:600;min-width:2.5rem;text-align:right;">{{ $row['responses'] }}</div>
+                </div>
+            @empty
+                <p class="fi-section-header-description">No responses for these filters.</p>
+            @endforelse
+
+            @if (count($bySite) > 10)
+                <p class="fi-section-header-description" style="margin-top:.5rem;">
+                    Showing the 10 busiest of {{ count($bySite) }} locations. The full breakdown is in the tables and downloads below.
+                </p>
+            @endif
+        </x-filament::section>
+
+        {{-- Donut: what people reported. --}}
+        <x-filament::section icon="heroicon-o-chart-pie" heading="What people reported">
+            @if ($issueTotal > 0)
+                <div style="display:flex;flex-wrap:wrap;align-items:center;gap:1.25rem;">
+                    @php
+                        $radius = 54;
+                        $circumference = 2 * M_PI * $radius;
+                        $offset = 0.0;
+                    @endphp
+                    <svg width="140" height="140" viewBox="0 0 140 140" role="img" aria-label="Share of responses by issue type">
+                        <circle cx="70" cy="70" r="{{ $radius }}" fill="none" stroke="rgba(128,128,128,.15)" stroke-width="22"></circle>
+                        @foreach ($byIssue as $i => $row)
+                            @php
+                                $share = $row['total'] / $issueTotal;
+                                $length = $share * $circumference;
+                            @endphp
+                            <circle cx="70" cy="70" r="{{ $radius }}" fill="none"
+                                stroke="{{ $palette[$i % 10] }}" stroke-width="22"
+                                stroke-dasharray="{{ round($length, 2) }} {{ round($circumference - $length, 2) }}"
+                                stroke-dashoffset="{{ round(-$offset, 2) }}"
+                                transform="rotate(-90 70 70)"></circle>
+                            @php $offset += $length; @endphp
+                        @endforeach
+                    </svg>
+
+                    <ul style="list-style:none;margin:0;padding:0;display:grid;gap:.35rem;font-size:.8rem;">
+                        @foreach ($byIssue as $i => $row)
+                            <li style="display:flex;align-items:center;gap:.5rem;">
+                                <span style="width:.7rem;height:.7rem;border-radius:2px;background:{{ $palette[$i % 10] }};flex:none;"></span>
+                                <span>{{ ucfirst(str_replace('_', ' ', $row['issue_category'])) }}</span>
+                                <span style="opacity:.7;">{{ $row['total'] }} ({{ round($row['total'] / $issueTotal * 100) }}%)</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @else
+                <p class="fi-section-header-description">No responses for these filters.</p>
+            @endif
+        </x-filament::section>
     </div>
 
     {{-- Download buttons: the same report and the same filters, in four formats.
@@ -198,12 +277,16 @@
                     </thead>
                     <tbody>
                         @forelse ($bySite as $row)
+                            @php
+                                $rowAvg = $row['average_rating'] ?? null;
+                                $tint = $rowAvg === null ? '' : ($rowAvg >= 4 ? 'color:#15803d;' : ($rowAvg >= 3 ? 'color:#b45309;' : 'color:#b91c1c;'));
+                            @endphp
                             <tr class="fi-ta-row">
                                 <td class="fi-ta-cell">{{ $row['label'] }}</td>
                                 <td class="fi-ta-cell">{{ $row['location'] ?? '—' }}</td>
                                 <td class="fi-ta-cell">{{ $row['responses'] }}</td>
                                 <td class="fi-ta-cell">
-                                    <span style="font-weight:600;">{{ $row['average_rating'] ?? '—' }}</span>
+                                    <span style="font-weight:700;{{ $tint }}">{{ $row['average_rating'] ?? '—' }}</span>
                                     <span class="fi-section-header-description">(n={{ $row['rated'] }})</span>
                                     @unless ($row['significant'])
                                         <x-filament::badge color="warning" size="sm">small sample</x-filament::badge>
@@ -259,9 +342,17 @@
         {{-- Issues --}}
         <x-filament::section icon="heroicon-o-exclamation-triangle" heading="Issues reported">
             @forelse ($byIssue as $row)
-                <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;padding-block:.5rem;border-bottom:1px solid var(--fi-color-gray-200,rgba(128,128,128,.2));">
-                    <span>{{ ucfirst(str_replace('_', ' ', $row['issue_category'])) }}</span>
-                    <x-filament::badge color="gray">{{ $row['total'] }}</x-filament::badge>
+                @php
+                    // "No problem" is the good outcome, so it is not coloured
+                    // like a fault.
+                    $isProblem = $row['issue_category'] !== 'none';
+                @endphp
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;padding-block:.5rem;border-bottom:1px solid rgba(128,128,128,.18);">
+                    <span style="display:flex;align-items:center;gap:.5rem;">
+                        <span style="width:.65rem;height:.65rem;border-radius:999px;flex:none;background:{{ $isProblem ? '#dc2626' : '#16a34a' }};"></span>
+                        {{ ucfirst(str_replace('_', ' ', $row['issue_category'])) }}
+                    </span>
+                    <x-filament::badge :color="$isProblem ? 'danger' : 'success'">{{ $row['total'] }}</x-filament::badge>
                 </div>
             @empty
                 <p class="fi-section-header-description">No responses for these filters.</p>
