@@ -174,6 +174,68 @@ class KpiReportTest extends TestCase
         $this->assertSame(0, $totals['responses']);
     }
 
+    public function test_distinct_devices_counts_hashed_macs_and_is_labelled_as_devices(): void
+    {
+        $site = Site::factory()->create();
+
+        // The controller stores hash('sha256', $clientMac); two submissions from
+        // the same device must collapse to one, two devices must stay two.
+        $macA = hash('sha256', 'AA:BB:CC:DD:EE:01');
+        $macB = hash('sha256', 'AA:BB:CC:DD:EE:02');
+
+        SurveyResponse::factory()->create(['site_id' => $site->id, 'supplier_id' => $site->supplier_id, 'session_reference_hash' => $macA]);
+        SurveyResponse::factory()->create(['site_id' => $site->id, 'supplier_id' => $site->supplier_id, 'session_reference_hash' => $macA]);
+        SurveyResponse::factory()->create(['site_id' => $site->id, 'supplier_id' => $site->supplier_id, 'session_reference_hash' => $macB]);
+        // A QR / site-link respondent has no device address at all.
+        SurveyResponse::factory()->create(['site_id' => $site->id, 'supplier_id' => $site->supplier_id, 'session_reference_hash' => null]);
+
+        $totals = app(KpiReport::class)->for($this->admin(), new ReportFilters)['totals'];
+
+        $this->assertSame(2, $totals['distinct_devices']);
+        $this->assertSame(3, $totals['device_responses']);
+        // The QR response is counted as a response but never as a device.
+        $this->assertSame(4, $totals['responses']);
+    }
+
+    public function test_distinct_devices_is_zero_rather_than_null_when_nobody_used_the_portal(): void
+    {
+        $site = Site::factory()->create();
+        SurveyResponse::factory()->create([
+            'site_id' => $site->id, 'supplier_id' => $site->supplier_id, 'session_reference_hash' => null,
+        ]);
+
+        $totals = app(KpiReport::class)->for($this->admin(), new ReportFilters)['totals'];
+
+        $this->assertSame(0, $totals['distinct_devices']);
+        $this->assertSame(0, $totals['device_responses']);
+    }
+
+    public function test_device_counts_respect_scope(): void
+    {
+        $mine = Site::factory()->create();
+        $theirs = Site::factory()->create();
+
+        SurveyResponse::factory()->create([
+            'site_id' => $mine->id, 'supplier_id' => $mine->supplier_id,
+            'session_reference_hash' => hash('sha256', 'AA:BB:CC:DD:EE:01'),
+        ]);
+        SurveyResponse::factory()->create([
+            'site_id' => $theirs->id, 'supplier_id' => $theirs->supplier_id,
+            'session_reference_hash' => hash('sha256', 'AA:BB:CC:DD:EE:02'),
+        ]);
+
+        $user = User::factory()->create([
+            'role' => UserRole::SupplierAdmin,
+            'scope_type' => ScopeType::Supplier,
+            'scope_supplier_id' => $mine->supplier_id,
+        ]);
+
+        $totals = app(KpiReport::class)->for($user, new ReportFilters)['totals'];
+
+        // Otherwise the device count would leak another supplier's device count.
+        $this->assertSame(1, $totals['distinct_devices']);
+    }
+
     public function test_filters_can_be_built_from_array_input(): void
     {
         $filters = ReportFilters::fromArray([

@@ -135,6 +135,16 @@
                 <div style="margin-top:.5rem;font-size:1.5rem;font-weight:700;">{{ $totals['unverified'] ?? 0 }}</div>
                 <div class="fi-section-header-description">Self-attributed. Not tied to a MAC address.</div>
             </div>
+            <div>
+                <x-filament::badge color="info" icon="heroicon-m-device-phone-mobile">Distinct devices</x-filament::badge>
+                <div style="margin-top:.5rem;font-size:1.5rem;font-weight:700;">{{ $totals['distinct_devices'] ?? 0 }}</div>
+                <div class="fi-section-header-description">
+                    {{ $totals['device_responses'] ?? 0 }} portal response{{ ($totals['device_responses'] ?? 0) === 1 ? '' : 's' }}.
+                    Counted by hashed MAC, so this is devices, not people — one person
+                    with a phone and a tablet counts twice. QR and site-link respondents
+                    have no MAC and are not included.
+                </div>
+            </div>
         </div>
     </x-filament::section>
 
