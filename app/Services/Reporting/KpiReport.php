@@ -59,9 +59,15 @@ class KpiReport
     }
 
     /**
+     * The response rows a report covers, after scope and filters.
+     *
+     * Public so the PDF and the on-screen report read the same rows. Filters can
+     * narrow this set but never widen it — `visibleTo()` is applied first, so a
+     * filter asking for another province still returns nothing.
+     *
      * @return Builder<SurveyResponse>
      */
-    private function query(User $user, ReportFilters $filters): Builder
+    public function query(User $user, ReportFilters $filters): Builder
     {
         // Scope first, filters second: a filter can narrow, never widen.
         $query = SurveyResponse::query()->visibleTo($user);

@@ -3,6 +3,8 @@
 use App\Http\Controllers\Portal\OmadaAdapterController;
 use App\Http\Controllers\Portal\PortalSessionController;
 use App\Http\Controllers\PublicSurveyController;
+use App\Http\Controllers\Reporting\SurveyReportController;
+use Filament\Http\Middleware\Authenticate;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -38,6 +40,17 @@ Route::prefix('portal/session/{session}')->name('portal.')->group(function (): v
 });
 
 Route::view('portal/unavailable', 'portal.unavailable')->name('portal.unavailable');
+
+/*
+| Printable survey report. Not a panel page: it renders plain HTML so the
+| browser's print-to-PDF produces a clean document without Livewire, the panel
+| sidebar, or a PDF rendering engine on the server. Gated by Filament's own
+| Authenticate middleware, so a deactivated account is refused here exactly as
+| it would be in the panel (FR-REP-005, FR-REP-007).
+*/
+Route::get('admin/reports/survey', SurveyReportController::class)
+    ->middleware(Authenticate::class)
+    ->name('reports.survey');
 
 /*
 | Omada External Portal Server adapter (receive side). Omada appends its
