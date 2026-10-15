@@ -136,6 +136,7 @@
     <thead>
         <tr>
             <th>Site</th>
+            <th>Location</th>
             <th class="num">Responses</th>
             <th class="num">Rated (n)</th>
             <th class="num">Avg rating</th>
@@ -146,6 +147,7 @@
         @forelse ($bySite as $row)
             <tr>
                 <td>{{ $row['label'] }}</td>
+                <td>{{ $row['location'] ?? '—' }}</td>
                 <td class="num">{{ $row['responses'] }}</td>
                 <td class="num">{{ $row['rated'] }}</td>
                 <td class="num">{{ $row['average_rating'] ?? '—' }}</td>
@@ -156,7 +158,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="5" class="muted">No responses for these filters.</td></tr>
+            <tr><td colspan="6" class="muted">No responses for these filters.</td></tr>
         @endforelse
     </tbody>
 </table>
@@ -228,7 +230,7 @@
             <th>Reference</th>
             <th>Submitted</th>
             <th>Site</th>
-            <th>Province</th>
+            <th>Location</th>
             <th>Supplier</th>
             <th class="num">Ver</th>
             <th class="num">Rating</th>
@@ -242,7 +244,7 @@
                 <td class="small">{{ substr($response->id, 0, 8) }}</td>
                 <td class="small">{{ $response->submitted_at?->format('j M Y H:i') }}</td>
                 <td class="small">{{ $response->site?->site_code }}</td>
-                <td class="small">{{ $response->site?->province }}</td>
+                <td class="small">{{ collect([$response->site?->municipality, $response->site?->province])->filter()->unique()->implode(', ') ?: '—' }}</td>
                 <td class="small">{{ $response->supplier?->name }}</td>
                 <td class="num small">{{ $response->surveyVersion?->version_number }}</td>
                 <td class="num">{{ $response->overall_rating ?? '—' }}</td>

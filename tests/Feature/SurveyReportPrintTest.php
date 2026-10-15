@@ -150,6 +150,46 @@ class SurveyReportPrintTest extends TestCase
         $this->assertCount(1, $response->viewData('responses'));
     }
 
+    public function test_it_shows_where_each_site_is(): void
+    {
+        $site = Site::factory()->create([
+            'site_code' => 'POP-01',
+            'municipality' => 'Laoag',
+            'province' => 'Ilocos Norte',
+        ]);
+        $this->response($site, 5);
+
+        $response = $this->actingAs($this->admin())->get(route('reports.survey'));
+
+        $response->assertOk();
+        // Both the by-site breakdown and the response appendix carry the location.
+        $this->assertSame('Laoag, Ilocos Norte', $response->viewData('bySite')[0]['location']);
+        $response->assertSee('Laoag, Ilocos Norte');
+    }
+
+    public function test_a_site_without_a_municipality_still_reports_its_province(): void
+    {
+        $site = Site::factory()->create(['municipality' => null, 'province' => 'Ilocos Norte']);
+        $this->response($site, 5);
+
+        $response = $this->actingAs($this->admin())->get(route('reports.survey'));
+
+        $response->assertOk();
+        $this->assertSame('Ilocos Norte', $response->viewData('bySite')[0]['location']);
+    }
+
+    public function test_a_site_with_no_location_at_all_does_not_break_the_report(): void
+    {
+        $site = Site::factory()->create(['municipality' => null, 'province' => null]);
+        $this->response($site, 5);
+
+        $response = $this->actingAs($this->admin())->get(route('reports.survey'));
+
+        $response->assertOk();
+        $this->assertNull($response->viewData('bySite')[0]['location']);
+        $response->assertSee($site->site_code);
+    }
+
     public function test_the_appendix_is_capped_and_says_so_rather_than_truncating_silently(): void
     {
         config(['reporting.pdf_appendix_max_rows' => 10]);
