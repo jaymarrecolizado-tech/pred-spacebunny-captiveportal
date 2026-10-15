@@ -46,7 +46,7 @@ class SurveyReportController extends Controller
         $totalMatched = (clone $scoped)->count();
 
         $responses = $scoped
-            ->with(['site:id,site_code,name,province', 'supplier:id,name', 'surveyVersion:id,version_number'])
+            ->with(['site:id,site_code,name,region,province,municipality', 'supplier:id,name', 'surveyVersion:id,version_number'])
             ->latest('submitted_at')
             ->limit($cap)
             ->get();

@@ -146,6 +146,7 @@
                     <thead>
                         <tr>
                             <th class="fi-ta-header-cell">Site</th>
+                            <th class="fi-ta-header-cell">Location</th>
                             <th class="fi-ta-header-cell">Responses</th>
                             <th class="fi-ta-header-cell">Avg rating (n)</th>
                         </tr>
@@ -154,6 +155,7 @@
                         @forelse ($bySite as $row)
                             <tr class="fi-ta-row">
                                 <td class="fi-ta-cell">{{ $row['label'] }}</td>
+                                <td class="fi-ta-cell">{{ $row['location'] ?? '—' }}</td>
                                 <td class="fi-ta-cell">{{ $row['responses'] }}</td>
                                 <td class="fi-ta-cell">
                                     <span style="font-weight:600;">{{ $row['average_rating'] ?? '—' }}</span>
@@ -165,7 +167,7 @@
                             </tr>
                         @empty
                             <tr class="fi-ta-row">
-                                <td class="fi-ta-cell" colspan="3">No responses for these filters.</td>
+                                <td class="fi-ta-cell" colspan="4">No responses for these filters.</td>
                             </tr>
                         @endforelse
                     </tbody>

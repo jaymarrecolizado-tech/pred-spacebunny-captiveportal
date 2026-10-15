@@ -51,7 +51,22 @@ class KpiReport
                 'unverified' => (clone $base)->where('attribution_method', '!=', AttributionMethod::CaptiveVerified->value)->count(),
                 'issue_rate' => $responses === 0 ? null : round($issueCount / $responses * 100, 1),
             ],
-            'by_site' => $this->group($base, 'site_id', Site::query()->pluck('site_code', 'id')),
+            // Where each site is, so a reader can tell POP-01 from POP-02 without
+            // a second lookup. Municipality and province only - the full
+            // address and coordinates are site registry data, not report data.
+            'by_site' => $this->group(
+                $base,
+                'site_id',
+                Site::query()->pluck('site_code', 'id'),
+                Site::query()
+                    ->get(['id', 'municipality', 'province'])
+                    ->mapWithKeys(fn (Site $site) => [
+                        $site->id => collect([$site->municipality, $site->province])
+                            ->filter()
+                            ->unique()
+                            ->implode(', ') ?: null,
+                    ]),
+            ),
             'by_supplier' => $this->group($base, 'supplier_id', DB::table('suppliers')->pluck('name', 'id')),
             'by_issue' => $this->issueBreakdown($base),
             'daily' => $this->daily($base),
@@ -89,7 +104,7 @@ class KpiReport
      * @param  Collection<int, string>  $labels
      * @return array<int, array<string, mixed>>
      */
-    private function group(Builder $base, string $column, Collection $labels): array
+    private function group(Builder $base, string $column, Collection $labels, Collection $locations = new Collection): array
     {
         $minimum = (int) config('reporting.minimum_sample_size');
 
@@ -100,6 +115,7 @@ class KpiReport
             ->get()
             ->map(fn ($row) => [
                 'label' => $labels[$row->group_id] ?? 'Unknown',
+                'location' => $locations->get($row->group_id),
                 'responses' => (int) $row->responses,
                 'rated' => (int) $row->rated,
                 'average_rating' => $row->rated > 0 ? round((float) $row->average_rating, 2) : null,
