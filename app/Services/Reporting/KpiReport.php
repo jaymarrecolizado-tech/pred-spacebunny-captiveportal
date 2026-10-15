@@ -36,6 +36,20 @@ class KpiReport
         $withIssue = (clone $base)->whereNotNull('issue_category')->count();
         $issueCount = $withIssue - $noIssue;
 
+        // Distinct connected devices, counted from the hashed client MAC that the
+        // Omada handoff already carries (SHA-256, never the raw address).
+        //
+        // This is a DEVICE count, not a people count: one person with a phone and
+        // a tablet is 2, and someone whose connection drops and re-associates is
+        // 2. It also only covers the captive-portal cohort - QR and site-link
+        // respondents never present a MAC, so they are excluded rather than
+        // silently counted as one anonymous user each (FR-REP-006).
+        $deviceResponses = (clone $base)->whereNotNull('session_reference_hash')->count();
+        $distinctDevices = (clone $base)
+            ->whereNotNull('session_reference_hash')
+            ->distinct()
+            ->count('session_reference_hash');
+
         return [
             'filters' => $filters,
             'totals' => [
@@ -50,6 +64,10 @@ class KpiReport
                 'verified' => (clone $base)->where('attribution_method', AttributionMethod::CaptiveVerified->value)->count(),
                 'unverified' => (clone $base)->where('attribution_method', '!=', AttributionMethod::CaptiveVerified->value)->count(),
                 'issue_rate' => $responses === 0 ? null : round($issueCount / $responses * 100, 1),
+                // Device count, and how many responses it is drawn from, so the
+                // number can never be read as "people served".
+                'distinct_devices' => $distinctDevices,
+                'device_responses' => $deviceResponses,
             ],
             // Where each site is, so a reader can tell POP-01 from POP-02 without
             // a second lookup. Municipality and province only - the full

@@ -112,6 +112,7 @@
 <div class="tiles">
     @php
         $rated = (int) ($totals['rated'] ?? 0);
+        $deviceResponses = (int) ($totals['device_responses'] ?? 0);
         $tiles = [
             ['Total responses', (string) ($totals['responses'] ?? 0), 'All responses in scope'],
             ['Average rating', $totals['average_rating'] ?? '—', $rated === 0 ? 'No rated responses yet' : 'From '.$rated.' rated response'.($rated === 1 ? '' : 's')],
@@ -119,6 +120,7 @@
             ['Connection issue rate', ($totals['issue_rate'] ?? null) === null ? '—' : $totals['issue_rate'].'%', 'Share reporting a connection problem'],
             ['Verified portal', (string) ($totals['verified'] ?? 0), 'Confirmed by portal handoff'],
             ['Site link / QR', (string) ($totals['unverified'] ?? 0), 'Self-attributed, unverified'],
+            ['Distinct devices', (string) ($totals['distinct_devices'] ?? 0), 'From '.$deviceResponses.' portal response'.($deviceResponses === 1 ? '' : 's')],
         ];
     @endphp
 
@@ -263,6 +265,15 @@
     {{ $minimumSampleSize }} rated responses are flagged, because a handful of answers is not evidence of a trend.
     A figure shows &mdash; rather than 0% when there is no data to calculate it from.
     Verified portal and site link or QR responses are counted separately and never blended.
+</p>
+
+<p class="small muted">
+    <strong>About the distinct device count:</strong> it is the number of different network devices
+    (by hashed MAC address) that submitted a survey through the captive portal, not the number of people.
+    One person carrying a phone and a tablet counts as two, and a connection that drops and re-associates
+    counts again. It covers only portal submissions: a person answering through a QR code or site link
+    presents no device address and is therefore not included. No raw MAC address is stored — responses hold
+    a SHA-256 hash, which is enough to count repeats and not enough to identify a device.
 </p>
 
 </body>
