@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\AttributionMethod;
 use App\Enums\IntegrationMode;
+use App\Enums\SurveyTriggerMode;
 use App\Models\SurveyResponse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -65,6 +66,64 @@ class OmadaAdapterTest extends TestCase
         [$site] = $this->activeSiteWithSurvey();
 
         $this->get(route('portal.omada', ['siteCode' => $site->site_code]).'?'.http_build_query($this->handoffInSeconds()))
+            ->assertOk()
+            ->assertSee($site->name);
+    }
+
+    public function test_a_returning_device_on_an_interval_site_gets_access_without_the_survey(): void
+    {
+        [$site] = $this->activeSiteWithSurvey();
+        $site->forceFill(['survey_trigger_mode' => 'interval', 'survey_trigger_days' => 7])->save();
+
+        // This exact device answered yesterday.
+        SurveyResponse::factory()->create([
+            'site_id' => $site->id,
+            'supplier_id' => $site->supplier_id,
+            'session_reference_hash' => hash('sha256', 'AA-BB-CC-DD-EE-FF'),
+            'submitted_at' => now()->subDay(),
+        ]);
+
+        $this->get(route('portal.omada', ['siteCode' => $site->site_code]).'?'.http_build_query($this->handoff()))
+            // Redirected past the survey, to the thank-you page that grants access.
+            ->assertRedirect(route('portal.omada.thanks', ['siteCode' => $site->site_code]));
+    }
+
+    public function test_a_first_timer_is_still_asked_even_on_an_interval_site(): void
+    {
+        [$site] = $this->activeSiteWithSurvey();
+        $site->forceFill(['survey_trigger_mode' => 'interval', 'survey_trigger_days' => 7])->save();
+
+        // Otherwise "every 7 days" would silently exclude anyone who only ever
+        // connects once a month.
+        $this->get(route('portal.omada', ['siteCode' => $site->site_code]).'?'.http_build_query($this->handoff()))
+            ->assertOk()
+            ->assertSee($site->name);
+    }
+
+    public function test_a_switched_off_site_never_shows_the_survey(): void
+    {
+        [$site] = $this->activeSiteWithSurvey();
+        $site->forceFill(['survey_trigger_mode' => 'never'])->save();
+
+        $this->get(route('portal.omada', ['siteCode' => $site->site_code]).'?'.http_build_query($this->handoff()))
+            ->assertRedirect(route('portal.omada.thanks', ['siteCode' => $site->site_code]));
+    }
+
+    public function test_the_default_is_to_ask_every_time(): void
+    {
+        [$site] = $this->activeSiteWithSurvey();
+
+        $this->assertSame(SurveyTriggerMode::Always, $site->fresh()->survey_trigger_mode);
+
+        // Adding the feature must not change behaviour for an unconfigured site.
+        SurveyResponse::factory()->create([
+            'site_id' => $site->id,
+            'supplier_id' => $site->supplier_id,
+            'session_reference_hash' => hash('sha256', 'AA-BB-CC-DD-EE-FF'),
+            'submitted_at' => now()->subDay(),
+        ]);
+
+        $this->get(route('portal.omada', ['siteCode' => $site->site_code]).'?'.http_build_query($this->handoff()))
             ->assertOk()
             ->assertSee($site->name);
     }

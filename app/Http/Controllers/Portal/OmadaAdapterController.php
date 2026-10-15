@@ -9,6 +9,7 @@ use App\Models\Site;
 use App\Services\Portal\OmadaHotspotClient;
 use App\Services\Responses\SubmitResponse;
 use App\Services\Surveys\ResolveSurvey;
+use App\Services\Surveys\SurveyTrigger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -36,13 +37,15 @@ class OmadaAdapterController extends Controller
         private readonly ResolveSurvey $resolveSurvey,
         private readonly SubmitResponse $submitResponse,
         private readonly OmadaHotspotClient $hotspot,
+        private readonly SurveyTrigger $trigger,
     ) {}
 
     public function show(string $siteCode): View|RedirectResponse
     {
         $site = Site::query()->where('site_code', $siteCode)->first();
+        $handoff = request()->query();
 
-        if ($site === null || ! $this->validHandoff(request()->query())) {
+        if ($site === null || ! $this->validHandoff($handoff)) {
             return redirect()->route('portal.unavailable');
         }
 
@@ -52,6 +55,23 @@ class OmadaAdapterController extends Controller
             return redirect()->route('portal.unavailable');
         }
 
+        // Scheduled surveying: a device that answered recently, at a site set to
+        // ask periodically or switched off, gets its access granted straight away
+        // and never sees the survey. See SurveyTrigger for why a first-timer is
+        // still always asked.
+        if (! $this->trigger->shouldAsk($site, hash('sha256', $handoff['clientMac']))) {
+            $authorized = $this->hotspot->authorize([
+                'clientMac' => $handoff['clientMac'],
+                'apMac' => $handoff['apMac'],
+                'ssidName' => $handoff['ssidName'] ?? '',
+                'radioId' => $handoff['radioId'] ?? '0',
+                'site' => $handoff['site'] ?? '',
+            ]);
+
+            return redirect()->route('portal.omada.thanks', ['siteCode' => $site->site_code])
+                ->with('authorized', $authorized);
+        }
+
         // Same view as the public survey, but posting back here so the
         // Omada handoff parameters survive to the authorize step.
         return view('public.survey', [
@@ -59,7 +79,7 @@ class OmadaAdapterController extends Controller
             'resolved' => $resolved,
             'idempotencyKey' => (string) Str::uuid(),
             'postUrl' => route('portal.omada.store', ['siteCode' => $site->site_code])
-                .'?'.http_build_query(request()->query()),
+                .'?'.http_build_query($handoff),
         ]);
     }
 

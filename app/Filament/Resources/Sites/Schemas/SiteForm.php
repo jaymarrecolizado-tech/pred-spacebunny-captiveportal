@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Sites\Schemas;
 use App\Enums\IntegrationMode;
 use App\Enums\IntegrationStatus;
 use App\Enums\RecordStatus;
+use App\Enums\SurveyTriggerMode;
 use App\Models\Supplier;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
@@ -73,6 +74,36 @@ class SiteForm
                         DateTimePicker::make('last_integration_test_at')->label('Last integration test'),
                     ]),
                 ]),
+
+                Section::make('Who gets surveyed here')
+                    ->description('Controls how often someone must answer the survey before their internet works.')
+                    ->schema([
+                        Select::make('survey_trigger_mode')
+                            ->label('When to ask people for feedback')
+                            ->options(SurveyTriggerMode::options())
+                            ->default(SurveyTriggerMode::Always->value)
+                            ->required()
+                            ->live()
+                            // Filament v5 Select has no per-option description, so
+                            // the chosen mode explains itself underneath.
+                            ->helperText(fn ($get) => SurveyTriggerMode::tryFrom((string) $get('survey_trigger_mode'))
+                                ?->description() ?? '')
+                            ->columnSpanFull(),
+
+                        TextInput::make('survey_trigger_days')
+                            ->label('Days between asking the same person')
+                            ->numeric()
+                            ->minValue(1)
+                            ->maxValue(365)
+                            ->default(7)
+                            ->required()
+                            ->suffix('days')
+                            // Only meaningful for the interval mode; showing it
+                            // otherwise would imply a setting that does nothing.
+                            ->visible(fn ($get) => $get('survey_trigger_mode') === SurveyTriggerMode::Interval->value)
+                            ->helperText('Someone who answered within this window gets straight back in without seeing the survey.')
+                            ->columnSpanFull(),
+                    ]),
 
                 Section::make('Notes')->schema([
                     Textarea::make('notes')->rows(2)->maxLength(2000)->hiddenOn('table'),

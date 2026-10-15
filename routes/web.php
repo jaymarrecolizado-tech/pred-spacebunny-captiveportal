@@ -3,6 +3,7 @@
 use App\Http\Controllers\Portal\OmadaAdapterController;
 use App\Http\Controllers\Portal\PortalSessionController;
 use App\Http\Controllers\PublicSurveyController;
+use App\Http\Controllers\Reporting\ReportDownloadController;
 use App\Http\Controllers\Reporting\SurveyReportController;
 use Filament\Http\Middleware\Authenticate;
 use Illuminate\Support\Facades\Route;
@@ -51,6 +52,15 @@ Route::view('portal/unavailable', 'portal.unavailable')->name('portal.unavailabl
 Route::get('admin/reports/survey', SurveyReportController::class)
     ->middleware(Authenticate::class)
     ->name('reports.survey');
+
+/*
+| The same report as a download: CSV, spreadsheet or XML, chosen with ?format=.
+| Filters are the ones the report page was showing. Every format renders the
+| same ReportDocument as the PDF, so the figures cannot disagree (FR-REP-005).
+*/
+Route::get('admin/reports/survey/download', ReportDownloadController::class)
+    ->middleware(Authenticate::class)
+    ->name('reports.survey.download');
 
 /*
 | Omada External Portal Server adapter (receive side). Omada appends its
