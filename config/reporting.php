@@ -28,4 +28,13 @@ return [
     */
     'minimum_sample_size' => (int) env('REPORT_MIN_SAMPLE_SIZE', 10),
 
+    /*
+    | Rows the printed PDF appendix will include. One document is printed in a
+    | single pass, so it is capped rather than paginated; past this many rows the
+    | browser starts to struggle. The CSV export is unlimited and stays the way
+    | to get every response. The printed document states when it was capped, so a
+    | partial appendix can never be mistaken for a complete one.
+    */
+    'pdf_appendix_max_rows' => (int) env('REPORT_PDF_MAX_ROWS', 2000),
+
 ];

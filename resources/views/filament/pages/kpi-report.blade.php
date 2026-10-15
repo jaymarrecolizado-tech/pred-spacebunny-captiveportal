@@ -84,6 +84,16 @@
             <x-slot name="footer">
                 <x-filament::button type="submit">Apply filters</x-filament::button>
                 <x-filament::button tag="a" :href="url()->current()" color="gray" outlined>Reset</x-filament::button>
+                {{-- PDF carries the same filters and the same scope; see SurveyReportController. --}}
+                <x-filament::button
+                    tag="a"
+                    :href="route('reports.survey', $activeFilters)"
+                    color="gray"
+                    outlined
+                    icon="heroicon-o-document-arrow-down"
+                >
+                    Save as PDF
+                </x-filament::button>
             </x-slot>
         </x-filament::section>
     </form>
