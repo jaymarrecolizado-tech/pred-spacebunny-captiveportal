@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\Omada\OmadaOpenApiClient;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -9,6 +10,19 @@ use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
+    public function register(): void
+    {
+        // Registered here rather than in a dedicated provider: this one is
+        // already guaranteed to boot, and a container binding that lives in a
+        // provider which fails to register fails silently - the symptom is an
+        // "unresolvable dependency" error at call time, far from the cause.
+        //
+        // Values come from config/omada.php, not env() directly: env() returns
+        // null once config is cached, which is what silently broke this in
+        // production while working perfectly locally.
+        $this->app->singleton(OmadaOpenApiClient::class, fn () => new OmadaOpenApiClient(config('omada', [])));
+    }
+
     public function boot(): void
     {
         // FR-RESP-010: proportional public-endpoint limits, keyed by IP and site

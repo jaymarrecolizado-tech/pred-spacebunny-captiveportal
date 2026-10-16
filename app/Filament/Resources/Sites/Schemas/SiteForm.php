@@ -75,6 +75,17 @@ class SiteForm
                     ]),
                 ]),
 
+                Section::make('Gateway link')
+                    ->description('How this location is matched to the Wi-Fi controller.')
+                    ->schema([
+                        TextInput::make('omada_site_id')
+                            ->label('Controller site ID')
+                            ->maxLength(64)
+                            ->unique(ignoreRecord: true)
+                            ->helperText('Filled in automatically when the locations are imported from the controller. Leave blank for a location the controller does not know about.')
+                            ->columnSpanFull(),
+                    ]),
+
                 Section::make('Who gets surveyed here')
                     ->description('Controls how often someone must answer the survey before their internet works.')
                     ->schema([
