@@ -18,6 +18,52 @@ use Illuminate\Database\Eloquent\Builder;
 
 class SitesTable
 {
+    /**
+     * The one-click switch, as its own method so it can be exercised directly
+     * rather than only through Livewire's action plumbing.
+     *
+     * A row action rather than an editable column: it then carries normal
+     * authorisation, and it can state honestly what turning on will and will
+     * not do.
+     */
+    public static function toggleSurveyingAction(): Action
+    {
+        return Action::make('toggleSurveying')
+            ->label(fn (Site $record) => $record->survey_trigger_mode === SurveyTriggerMode::Never
+                ? 'Turn on surveying'
+                : 'Turn off surveying')
+            ->icon(fn (Site $record) => $record->survey_trigger_mode === SurveyTriggerMode::Never
+                ? 'heroicon-o-bolt'
+                : 'heroicon-s-bolt-slash')
+            ->color(fn (Site $record) => $record->survey_trigger_mode === SurveyTriggerMode::Never
+                ? 'success'
+                : 'gray')
+            ->requiresConfirmation()
+            ->modalHeading(fn (Site $record) => $record->survey_trigger_mode === SurveyTriggerMode::Never
+                ? 'Turn on surveying at '.$record->name.'?'
+                : 'Turn off surveying at '.$record->name.'?')
+            ->modalDescription(function (Site $record): string {
+                if ($record->survey_trigger_mode !== SurveyTriggerMode::Never) {
+                    return 'People at this location will stop being asked for feedback. Feedback already collected is kept.';
+                }
+
+                if ($record->portal_last_seen_at === null) {
+                    return 'The Wi-Fi system has never sent anyone here, so nothing will happen yet. '
+                        .'After switching on, open this location and follow the three steps on the edit page. '
+                        .'Until that is done this stays on "Waiting for setup".';
+                }
+
+                return 'People who connect to this Wi-Fi will be asked to complete the survey before getting internet access.';
+            })
+            ->action(function (Site $record): void {
+                $record->forceFill([
+                    'survey_trigger_mode' => $record->survey_trigger_mode === SurveyTriggerMode::Never
+                        ? SurveyTriggerMode::Always->value
+                        : SurveyTriggerMode::Never->value,
+                ])->save();
+            });
+    }
+
     public static function configure(Table $table): Table
     {
         return $table
@@ -26,17 +72,17 @@ class SitesTable
                 TextColumn::make('name')->searchable()->sortable(),
 
                 // One column that answers "will this actually do anything?".
-                // Three separate columns let someone tick a switch and see
-                // nothing happen with no explanation.
+                // Without it, someone toggles the row action and sees nothing
+                // happen with no explanation.
                 TextColumn::make('survey_status')
-                    ->label('Surveying')
+                    ->label('Status')
                     ->badge()
                     ->state(fn (Site $record) => $record->surveyStatus()['label'])
                     ->color(fn (Site $record) => $record->surveyStatus()['tone'])
                     ->description(fn (Site $record) => $record->surveyStatus()['hint']),
 
                 TextColumn::make('portal_last_seen_at')
-                    ->label('Last connection seen')
+                    ->label('Last connection')
                     ->since()
                     ->placeholder('Never')
                     ->color('gray')
@@ -93,6 +139,7 @@ class SitesTable
             ])
             ->recordActions([
                 EditAction::make(),
+                self::toggleSurveyingAction(),
                 Action::make('qr')
                     ->label('QR poster')
                     ->icon('heroicon-o-qr-code')

@@ -118,27 +118,30 @@ class SiteForm
                             ->columnSpanFull(),
                     ]),
 
-                Section::make('Point this location at the survey')
-                    ->description('The one manual step. The controller does not let software set this, so it is done once in the Omada screen.')
+                Section::make('Turn this on in the Wi-Fi system')
+                    ->description('One step, done once per location. The Wi-Fi system does not let our software do this for you.')
                     ->schema([
-                        Placeholder::make('portal_url')
-                            ->label('Copy this into Omada')
+                        Placeholder::make('copy_url')
+                            ->label('Step 1 — copy this address')
                             ->content(fn (?Site $record) => $record === null
-                                ? 'Save the location first, then copy its portal address.'
+                                ? 'Save the location first.'
                                 : route('portal.omada', ['siteCode' => $record->site_code]))
-                            // Rendered as a selectable box so it can be copied
-                            // without retyping, which is where this goes wrong.
-                            ->extraAttributes(['style' => 'font-family:monospace;user-select:all']),
+                            // Selectable so it can be copied rather than retyped.
+                            // A mistyped address fails silently, which is the whole
+                            // problem this section exists to prevent.
+                            ->extraAttributes(['style' => 'font-family:monospace;user-select:all;font-size:1rem']),
 
-                        Placeholder::make('portal_setup')
-                            ->label('In the Omada screen')
-                            ->content('Open the site, go to Network Config > Authentication > Portal, '
-                                .'create a portal, choose "External Portal Server", '
-                                .'and paste the address above into the portal server field.')
+                        Placeholder::make('step2')
+                            ->label('Step 2 — in the Wi-Fi system')
+                            ->content('Open this location. Go to Network Config, then Authentication, then Portal. '
+                                .'Click Create New Portal. Name it anything. '
+                                .'Choose the Wi-Fi network. '
+                                .'Under "Authentication Type" choose External Portal Server. '
+                                .'Paste the address above into the box next to it, then Save.')
                             ->extraAttributes(['style' => 'white-space:normal']),
 
-                        Placeholder::make('portal_state')
-                            ->label('Current state')
+                        Placeholder::make('step3')
+                            ->label('Step 3 — come back and check')
                             ->content(fn (?Site $record) => $record?->surveyStatus()['hint'] ?? '')
                             ->extraAttributes(['style' => 'white-space:normal']),
                     ]),
