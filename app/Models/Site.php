@@ -55,6 +55,7 @@ class Site extends Model
         // leave the per-location survey setting saving without ever sticking.
         'survey_trigger_mode',
         'survey_trigger_days',
+        'portal_last_seen_at',
         'commissioned_at',
         'last_integration_test_at',
     ];
@@ -67,6 +68,7 @@ class Site extends Model
             'status' => RecordStatus::class,
             'survey_trigger_mode' => SurveyTriggerMode::class,
             'survey_trigger_days' => 'integer',
+            'portal_last_seen_at' => 'datetime',
             'latitude' => 'float',
             'longitude' => 'float',
             'commissioned_at' => 'date',
@@ -75,9 +77,45 @@ class Site extends Model
     }
 
     /**
-     * FR-SITE-002/006: a site code is the permanent registry identity. Renaming a
-     * site must never repoint historical references at another location.
+     * What will actually happen to someone who connects at this location.
+     *
+     * Deliberately one derived answer rather than three separate columns,
+     * because the failure people hit is toggling a switch and seeing nothing
+     * happen. This says which of the three reasons that is.
+     *
+     * @return array{label: string, tone: string, hint: string}
      */
+    public function surveyStatus(): array
+    {
+        if ($this->survey_trigger_mode === SurveyTriggerMode::Never) {
+            return [
+                'label' => 'Off',
+                'tone' => 'gray',
+                'hint' => 'Nobody is asked for feedback at this location.',
+            ];
+        }
+
+        $neverPointedAtUs = $this->portal_last_seen_at === null;
+
+        if ($neverPointedAtUs) {
+            return [
+                'label' => 'Waiting for setup',
+                'tone' => 'warning',
+                'hint' => 'Set to ask for feedback, but the controller has never sent anyone here. '
+                    .'Point this location at the survey portal in Omada, then it will start by itself.',
+            ];
+        }
+
+        return [
+            'label' => 'Live',
+            'tone' => 'success',
+            'hint' => $this->survey_trigger_mode === SurveyTriggerMode::Always
+                ? 'Every connection is asked to complete the survey.'
+                : 'Everyone is asked at least once, then straight through for '
+                    .$this->survey_trigger_days.' days.',
+        ];
+    }
+
     protected static function booted(): void
     {
         static::updating(function (self $site): void {
