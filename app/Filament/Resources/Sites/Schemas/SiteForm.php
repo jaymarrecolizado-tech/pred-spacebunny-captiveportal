@@ -6,8 +6,10 @@ use App\Enums\IntegrationMode;
 use App\Enums\IntegrationStatus;
 use App\Enums\RecordStatus;
 use App\Enums\SurveyTriggerMode;
+use App\Models\Site;
 use App\Models\Supplier;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -114,6 +116,31 @@ class SiteForm
                             ->visible(fn ($get) => $get('survey_trigger_mode') === SurveyTriggerMode::Interval->value)
                             ->helperText('Someone who answered within this window gets straight back in without seeing the survey.')
                             ->columnSpanFull(),
+                    ]),
+
+                Section::make('Point this location at the survey')
+                    ->description('The one manual step. The controller does not let software set this, so it is done once in the Omada screen.')
+                    ->schema([
+                        Placeholder::make('portal_url')
+                            ->label('Copy this into Omada')
+                            ->content(fn (?Site $record) => $record === null
+                                ? 'Save the location first, then copy its portal address.'
+                                : route('portal.omada', ['siteCode' => $record->site_code]))
+                            // Rendered as a selectable box so it can be copied
+                            // without retyping, which is where this goes wrong.
+                            ->extraAttributes(['style' => 'font-family:monospace;user-select:all']),
+
+                        Placeholder::make('portal_setup')
+                            ->label('In the Omada screen')
+                            ->content('Open the site, go to Network Config > Authentication > Portal, '
+                                .'create a portal, choose "External Portal Server", '
+                                .'and paste the address above into the portal server field.')
+                            ->extraAttributes(['style' => 'white-space:normal']),
+
+                        Placeholder::make('portal_state')
+                            ->label('Current state')
+                            ->content(fn (?Site $record) => $record?->surveyStatus()['hint'] ?? '')
+                            ->extraAttributes(['style' => 'white-space:normal']),
                     ]),
 
                 Section::make('Notes')->schema([

@@ -49,6 +49,19 @@ class OmadaAdapterController extends Controller
             return redirect()->route('portal.unavailable');
         }
 
+        // Recorded before the survey lookup: a handoff only arrives if the
+        // controller has this location pointed at this platform, so it is proof
+        // the location is live. The controller's API cannot report that, so it
+        // is detected from real traffic rather than from a checkbox somebody has
+        // to remember to tick.
+        //
+        // Deliberately before the survey check: "pointed at us" and "serving a
+        // survey" are two different things, and an operator needs to see the
+        // first even when the second is not set up yet.
+        if ($site->portal_last_seen_at === null || $site->portal_last_seen_at->isPast()) {
+            $site->forceFill(['portal_last_seen_at' => now()])->saveQuietly();
+        }
+
         $resolved = $this->resolveSurvey->forSite($site);
 
         if ($resolved === null) {

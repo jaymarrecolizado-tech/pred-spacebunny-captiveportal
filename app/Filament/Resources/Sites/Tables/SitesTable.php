@@ -6,6 +6,7 @@ use App\Enums\IntegrationMode;
 use App\Enums\IntegrationStatus;
 use App\Enums\RecordStatus;
 use App\Enums\SurveyTriggerMode;
+use App\Models\Site;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -13,6 +14,7 @@ use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class SitesTable
 {
@@ -23,22 +25,22 @@ class SitesTable
                 TextColumn::make('site_code')->label('Code')->searchable()->sortable(),
                 TextColumn::make('name')->searchable()->sortable(),
 
-                // The most important column once there are 193 rows: is this
-                // location actually serving the survey, or only registered?
-                TextColumn::make('survey_trigger_mode')
+                // One column that answers "will this actually do anything?".
+                // Three separate columns let someone tick a switch and see
+                // nothing happen with no explanation.
+                TextColumn::make('survey_status')
                     ->label('Surveying')
                     ->badge()
-                    ->formatStateUsing(fn (SurveyTriggerMode $state) => match ($state) {
-                        SurveyTriggerMode::Always => 'Every connection',
-                        SurveyTriggerMode::Interval => 'Every '.$this->getRecord()->survey_trigger_days.' days',
-                        SurveyTriggerMode::Never => 'Off',
-                    })
-                    ->color(fn (SurveyTriggerMode $state) => match ($state) {
-                        SurveyTriggerMode::Always => 'success',
-                        SurveyTriggerMode::Interval => 'warning',
-                        SurveyTriggerMode::Never => 'gray',
-                    })
-                    ->sortable(),
+                    ->state(fn (Site $record) => $record->surveyStatus()['label'])
+                    ->color(fn (Site $record) => $record->surveyStatus()['tone'])
+                    ->description(fn (Site $record) => $record->surveyStatus()['hint']),
+
+                TextColumn::make('portal_last_seen_at')
+                    ->label('Last connection seen')
+                    ->since()
+                    ->placeholder('Never')
+                    ->color('gray')
+                    ->toggleable(),
 
                 TextColumn::make('omada_site_id')
                     ->label('On controller')
@@ -69,11 +71,25 @@ class SitesTable
                 SelectFilter::make('integration_mode')->options(IntegrationMode::options()),
                 SelectFilter::make('integration_status')->options(IntegrationStatus::options()),
                 SelectFilter::make('supplier')->relationship('supplier', 'name'),
-                // With 193 imported locations, "which ones are live" is the
-                // filter people will actually use.
+                // With 193 imported locations, "which ones are actually live" is
+                // the filter people will actually use.
                 SelectFilter::make('survey_trigger_mode')
-                    ->label('Surveying')
+                    ->label('Asking for feedback')
                     ->options(SurveyTriggerMode::options()),
+
+                SelectFilter::make('portal_last_seen_at')
+                    ->label('Controller connection')
+                    ->options([
+                        'seen' => 'Has connected at least once',
+                        'never' => 'Has never connected',
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return match ($data['value'] ?? null) {
+                            'seen' => $query->whereNotNull('portal_last_seen_at'),
+                            'never' => $query->whereNull('portal_last_seen_at'),
+                            default => $query,
+                        };
+                    }),
             ])
             ->recordActions([
                 EditAction::make(),
