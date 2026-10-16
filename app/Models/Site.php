@@ -36,6 +36,7 @@ class Site extends Model
     use SoftDeletes;
 
     protected $fillable = [
+        'omada_site_id',
         'site_code',
         'name',
         'region',
@@ -50,6 +51,10 @@ class Site extends Model
         'integration_mode',
         'integration_status',
         'status',
+        // Mass-assignment silently drops anything not listed here, which would
+        // leave the per-location survey setting saving without ever sticking.
+        'survey_trigger_mode',
+        'survey_trigger_days',
         'commissioned_at',
         'last_integration_test_at',
     ];
