@@ -165,6 +165,43 @@ class OmadaAdapterTest extends TestCase
             ->assertRedirect(route('portal.unavailable'));
     }
 
+    /**
+     * The three refusals need three different instructions.
+     *
+     * Someone who pastes the address into a browser has not done anything
+     * wrong, and "this link is no longer valid" sends them looking for a
+     * problem that is not there.
+     */
+    public function test_each_refusal_says_what_actually_went_wrong(): void
+    {
+        [$site] = $this->activeSiteWithSurvey();
+
+        $this->get(route('portal.omada', ['siteCode' => $site->site_code]))
+            ->assertRedirect(route('portal.unavailable'))
+            ->assertSessionHas('portalReason', 'no_handoff');
+
+        $this->get(route('portal.omada', ['siteCode' => $site->site_code]).'?'.http_build_query($this->handoff(3600)))
+            ->assertRedirect(route('portal.unavailable'))
+            ->assertSessionHas('portalReason', 'expired');
+
+        $this->get(route('portal.omada', ['siteCode' => 'NOPE-0001']).'?'.http_build_query($this->handoff()))
+            ->assertRedirect(route('portal.unavailable'))
+            ->assertSessionHas('portalReason', 'unknown_location');
+    }
+
+    public function test_the_unavailable_page_explains_a_manual_visit_instead_of_blaming_the_link(): void
+    {
+        [$site] = $this->activeSiteWithSurvey();
+
+        $this->get(route('portal.omada', ['siteCode' => $site->site_code]))
+            ->assertRedirect(route('portal.unavailable'));
+
+        $this->get(route('portal.unavailable'))
+            ->assertOk()
+            ->assertSee('This page opens by itself when you connect')
+            ->assertDontSee('This check-in link is no longer valid');
+    }
+
     public function test_a_submission_through_the_adapter_is_unverified(): void
     {
         // Mirror the pilot: a captive-portal site with no validated handoff.

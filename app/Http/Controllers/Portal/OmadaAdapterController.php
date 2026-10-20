@@ -45,8 +45,15 @@ class OmadaAdapterController extends Controller
         $site = Site::query()->where('site_code', $siteCode)->first();
         $handoff = request()->query();
 
-        if ($site === null || ! $this->validHandoff($handoff)) {
-            return redirect()->route('portal.unavailable');
+        if ($site === null) {
+            return $this->unavailable('unknown_location');
+        }
+
+        if (! $this->validHandoff($handoff)) {
+            // Opened by hand, or a stale link: the person needs a different
+            // instruction in each case, and "your link expired" is wrong and
+            // alarming when no link ever existed.
+            return $this->unavailable($this->hasHandoff($handoff) ? 'expired' : 'no_handoff');
         }
 
         // Recorded before the survey lookup: a handoff only arrives if the
@@ -104,13 +111,13 @@ class OmadaAdapterController extends Controller
         // The handoff is re-validated on POST: the form URL alone must never
         // be enough to submit through this path.
         if ($site === null || ! $this->validHandoff($handoff)) {
-            return redirect()->route('portal.unavailable');
+            return $this->unavailable('expired');
         }
 
         $resolved = $this->resolveSurvey->forSite($site);
 
         if ($resolved === null) {
-            return redirect()->route('portal.unavailable');
+            return $this->unavailable('expired');
         }
 
         $clean = $this->submitResponse->validateAnswers($resolved->version, $request->validated('answers'));
@@ -149,6 +156,33 @@ class OmadaAdapterController extends Controller
             'reference' => session('reference'),
             'successUrl' => config('portal.success_url'),
         ]);
+    }
+
+    /**
+     * Whether the request carries a handoff at all.
+     *
+     * A request with no device details is not an expired session, it is an
+     * address opened by hand. The two need different instructions.
+     *
+     * @param  array<string, mixed>  $query
+     */
+    private function hasHandoff(array $query): bool
+    {
+        foreach (['clientMac', 'apMac', 't'] as $key) {
+            if (isset($query[$key]) && trim((string) $query[$key]) !== '') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Send the person to the page that explains what actually went wrong.
+     */
+    private function unavailable(string $reason): RedirectResponse
+    {
+        return redirect()->route('portal.unavailable')->with('portalReason', $reason);
     }
 
     /**
