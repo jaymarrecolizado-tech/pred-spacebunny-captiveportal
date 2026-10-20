@@ -80,13 +80,7 @@ class OmadaAdapterController extends Controller
         // and never sees the survey. See SurveyTrigger for why a first-timer is
         // still always asked.
         if (! $this->trigger->shouldAsk($site, hash('sha256', $handoff['clientMac']))) {
-            $authorized = $this->hotspot->authorize([
-                'clientMac' => $handoff['clientMac'],
-                'apMac' => $handoff['apMac'],
-                'ssidName' => $handoff['ssidName'] ?? '',
-                'radioId' => $handoff['radioId'] ?? '0',
-                'site' => $handoff['site'] ?? '',
-            ]);
+            $authorized = $this->hotspot->authorize($this->client($handoff));
 
             return redirect()->route('portal.omada.thanks', ['siteCode' => $site->site_code])
                 ->with('authorized', $authorized);
@@ -133,13 +127,7 @@ class OmadaAdapterController extends Controller
             sessionReference: $handoff['clientMac'],
         );
 
-        $authorized = $this->hotspot->authorize([
-            'clientMac' => $handoff['clientMac'],
-            'apMac' => $handoff['apMac'],
-            'ssidName' => $handoff['ssidName'] ?? '',
-            'radioId' => $handoff['radioId'] ?? '0',
-            'site' => $handoff['site'] ?? '',
-        ]);
+        $authorized = $this->hotspot->authorize($this->client($handoff));
 
         return redirect()->route('portal.omada.thanks', ['siteCode' => $site->site_code])
             ->with('authorized', $authorized)
@@ -168,7 +156,7 @@ class OmadaAdapterController extends Controller
      */
     private function hasHandoff(array $query): bool
     {
-        foreach (['clientMac', 'apMac', 't'] as $key) {
+        foreach (['clientMac', 'apMac', 'gatewayMac', 't'] as $key) {
             if (isset($query[$key]) && trim((string) $query[$key]) !== '') {
                 return true;
             }
@@ -186,6 +174,34 @@ class OmadaAdapterController extends Controller
     }
 
     /**
+     * The connecting device, in one shape.
+     *
+     * The controller names the same things differently depending on the kind
+     * of portal it is running:
+     *
+     *  - a portal bound to an SSID sends apMac, ssidName and radioId;
+     *  - a portal bound to a network sends gatewayMac and vid, and no SSID
+     *    name at all, because the device is behind a gateway rather than
+     *    attached to one.
+     *
+     * Both are the same handoff, so both are read the same way here. Getting
+     * this wrong is invisible until a real phone is refused at the door.
+     *
+     * @param  array<string, mixed>  $query
+     * @return array{clientMac: string, apMac: string, ssidName: string, radioId: string, site: string}
+     */
+    private function client(array $query): array
+    {
+        return [
+            'clientMac' => (string) ($query['clientMac'] ?? ''),
+            'apMac' => (string) ($query['apMac'] ?? $query['gatewayMac'] ?? ''),
+            'ssidName' => (string) ($query['ssidName'] ?? ''),
+            'radioId' => (string) ($query['radioId'] ?? $query['vid'] ?? '0'),
+            'site' => (string) ($query['site'] ?? ''),
+        ];
+    }
+
+    /**
      * Structural check only: the expected parameters are present and the
      * handoff is fresh. This detects misconfiguration and stale replays; it
      * does NOT authenticate the client (the parameters are unsigned).
@@ -194,10 +210,16 @@ class OmadaAdapterController extends Controller
      */
     private function validHandoff(array $query): bool
     {
-        foreach (['clientMac', 'apMac', 't'] as $key) {
+        foreach (['clientMac', 't'] as $key) {
             if (! isset($query[$key]) || trim((string) $query[$key]) === '') {
                 return false;
             }
+        }
+
+        // The access point is named differently by the two portal styles. One
+        // of them has to be there, or there is no device to authorize.
+        if (blank(trim((string) ($query['apMac'] ?? $query['gatewayMac'] ?? '')))) {
+            return false;
         }
 
         if (! is_numeric($query['t'])) {
