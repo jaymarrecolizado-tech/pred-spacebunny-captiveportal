@@ -10,6 +10,7 @@ use App\Filament\Pages\KpiReportPage;
 use App\Models\Integration;
 use App\Models\Site;
 use App\Models\Survey;
+use App\Models\SurveyAssignment;
 use App\Models\SurveyResponse;
 use App\Models\SurveyVersion;
 use App\Models\User;
@@ -208,6 +209,27 @@ class SurveyDemographicsTest extends TestCase
         $this->assertStringContainsString('Who answered', $html);
         $this->assertStringContainsString('Non-binary', $html);
         $this->assertStringContainsString('PWD (Persons with Disabilities)', $html);
+    }
+
+    public function test_the_command_gives_the_survey_to_every_location(): void
+    {
+        [$site, $survey] = $this->activeSiteWithSurvey();
+
+        // The seeder's global assignment is what makes the survey reachable.
+        SurveyAssignment::query()->delete();
+
+        $this->get(route('site.survey', ['siteCode' => $site->site_code]))
+            ->assertRedirect(route('site.unavailable'));
+
+        $this->artisan('survey:assign-all')->assertSuccessful();
+
+        $this->get(route('site.survey', ['siteCode' => $site->site_code]))
+            ->assertOk()
+            ->assertSee('Send feedback');
+
+        // Running it twice must not pile up assignments.
+        $this->artisan('survey:assign-all')->assertSuccessful();
+        $this->assertSame(1, SurveyAssignment::query()->count());
     }
 
     public function test_the_command_publishes_the_questions_as_a_new_live_version(): void
