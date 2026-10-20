@@ -23,6 +23,7 @@
 /public/storage
 /storage/*.key
 /storage/pail
+/storage/local-demo
 /vendor
 Homestead.json
 Homestead.yaml
@@ -34,3 +35,8 @@ graphify-out/
 # Omada OpenAPI secret, kept in its own one-line file so it cannot be
 # pasted into the wrong field. Never committed.
 .omada.secret
+
+# Ops runbooks that contain live server addresses, paths and SSH details.
+# Never publish these; keep them locally only.
+deploy/DEPLOYMENT.md
+deploy/NOTES-fpiapulse-shared-host.md

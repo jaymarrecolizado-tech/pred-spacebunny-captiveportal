@@ -60,6 +60,15 @@
         .cols { display: flex; gap: 14px; }
         .cols > * { flex: 1 1 0; min-width: 0; }
 
+        /* Chart container. Kept white in print so the colours in the SVG and
+           bars stay readable regardless of the browser's dark mode. */
+        .chart-card {
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            padding: 10px 12px;
+            background: #fff;
+        }
+
         .page { margin-bottom: 16px; }
 
         /* Screen-only helper; never printed */
@@ -116,25 +125,14 @@
 <div class="summary-block">
     <h2 style="margin-top:0;">Summary</h2>
     <div class="tiles">
-    @php
-        $rated = (int) ($totals['rated'] ?? 0);
-        $deviceResponses = (int) ($totals['device_responses'] ?? 0);
-        $tiles = [
-            ['Total responses', (string) ($totals['responses'] ?? 0), 'All responses in scope'],
-            ['Average rating', $totals['average_rating'] ?? '—', $rated === 0 ? 'No rated responses yet' : 'From '.$rated.' rated response'.($rated === 1 ? '' : 's')],
-            ['Positive', ($totals['positive_rate'] ?? null) === null ? '—' : $totals['positive_rate'].'%', 'Rating of '.$positiveThreshold.' or more'],
-            ['Connection issue rate', ($totals['issue_rate'] ?? null) === null ? '—' : $totals['issue_rate'].'%', 'Share reporting a connection problem'],
-            ['Verified portal', (string) ($totals['verified'] ?? 0), 'Confirmed by portal handoff'],
-            ['Site link / QR', (string) ($totals['unverified'] ?? 0), 'Self-attributed, unverified'],
-            ['Distinct devices', (string) ($totals['distinct_devices'] ?? 0), 'From '.$deviceResponses.' portal response'.($deviceResponses === 1 ? '' : 's')],
-        ];
-    @endphp
-
-    @foreach ($tiles as $tile)
+    {{-- The same summary lines the CSV, spreadsheet and XML print. Rendering
+         them from here is what stops the PDF quietly disagreeing with a
+         download of the same report (FR-REP-005). --}}
+    @foreach ($summary as $tile)
         <div class="tile">
-            <div class="label">{{ $tile[0] }}</div>
-            <div class="value">{{ $tile[1] }}</div>
-            <div class="note">{{ $tile[2] }}</div>
+            <div class="label">{{ $tile['label'] }}</div>
+            <div class="value">{{ $tile['value'] ?? '—' }}</div>
+            <div class="note">{{ $tile['note'] }}</div>
         </div>
     @endforeach
 </div>
@@ -171,7 +169,142 @@
     </tbody>
 </table>
 
+{{-- Charts on the summary page. Inline SVG and CSS bars only: no chart library,
+     nothing to install, and vector shapes that stay crisp in the saved PDF. --}}
+@php
+    $palette = ['#2563eb', '#0891b2', '#7c3aed', '#c026d3', '#db2777', '#ea580c', '#ca8a04', '#65a30d', '#059669', '#0d9488'];
+    $ratingRows = $ratingDistribution ?? [];
+    $ratingTotal = array_sum(array_column($ratingRows, 'total'));
+    $maxRating = max(1, max(array_column($ratingRows, 'total') ?: [1]));
+    $issueTotalAll = array_sum(array_column($byIssue, 'total'));
+    $topSites = array_slice($bySite, 0, 8);
+    $maxSite = max(1, max(array_column($topSites ?: [['responses' => 1]], 'responses')));
+@endphp
+
+<h2>Rating breakdown</h2>
+<div class="chart-card">
+    @if ($ratingTotal > 0)
+        <svg viewBox="0 0 300 120" width="100%" height="120" role="img" aria-label="How many people gave each star rating">
+            @foreach ($ratingRows as $i => $row)
+                @php
+                    // 5 stars tallest, 1 star shortest. Green at the top, red at
+                    // the bottom, so the shape reads as opinion at a glance.
+                    $colour = $row['stars'] >= 4 ? '#15803d' : ($row['stars'] === 3 ? '#b45309' : '#b91c1c');
+                    $h = $row['total'] > 0 ? max(3, round($row['total'] / $maxRating * 88)) : 1;
+                    $x = 22 + $i * 58;
+                @endphp
+                <rect x="{{ $x }}" y="{{ 100 - $h }}" width="34" height="{{ $h }}"
+                      fill="{{ $row['total'] > 0 ? $colour : 'rgba(128,128,128,.2)' }}" rx="2"></rect>
+                <text x="{{ $x + 17 }}" y="112" text-anchor="middle" font-size="10" fill="#6b7280">{{ $row['stars'] }}★</text>
+                <text x="{{ $x + 17 }}" y="{{ 96 - $h }}" text-anchor="middle" font-size="10" font-weight="bold" fill="#111827">
+                    {{ $row['total'] > 0 ? $row['total'] : '' }}
+                </text>
+            @endforeach
+        </svg>
+        <p class="muted" style="font-size:.75rem;margin-top:.4rem;">
+            {{ $ratingTotal }} rated response{{ $ratingTotal === 1 ? '' : 's' }}.
+            Average {{ $totals['average_rating'] ?? '—' }} out of 5.
+        </p>
+    @else
+        <p class="muted" style="font-size:.8rem;">No rated responses for these filters.</p>
+    @endif
+</div>
+
 <div class="cols" style="margin-top:22px;">
+    <div>
+        <h2 style="margin-top:0;">Responses by location</h2>
+        <div class="chart-card">
+            @forelse ($topSites as $i => $row)
+                @php $width = round($row['responses'] / $maxSite * 100, 1); @endphp
+                <div style="display:grid;grid-template-columns:minmax(5rem,7rem) 1fr auto;align-items:center;gap:.5rem;margin-bottom:.35rem;">
+                    <span style="font-size:.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $row['label'] }}</span>
+                    <span style="background:rgba(128,128,128,.18);border-radius:999px;height:.6rem;overflow:hidden;display:block;">
+                        <span style="display:block;width:{{ $width }}%;height:100%;border-radius:999px;background:{{ $palette[$i % 10] }};"></span>
+                    </span>
+                    <span style="font-size:.72rem;font-weight:bold;">{{ $row['responses'] }}</span>
+                </div>
+            @empty
+                <p class="muted" style="font-size:.8rem;">No responses for these filters.</p>
+            @endforelse
+        </div>
+    </div>
+
+    <div>
+        <h2 style="margin-top:0;">What people reported</h2>
+        <div class="chart-card" style="display:flex;align-items:center;gap:1rem;">
+            @if ($issueTotalAll > 0)
+                @php
+                    $radius = 42;
+                    $circumference = 2 * M_PI * $radius;
+                    $offset = 0.0;
+                @endphp
+                <svg width="108" height="108" viewBox="0 0 108 108" style="flex:none;" role="img" aria-label="Share of responses by issue type">
+                    <circle cx="54" cy="54" r="{{ $radius }}" fill="none" stroke="rgba(128,128,128,.15)" stroke-width="18"></circle>
+                    @foreach ($byIssue as $i => $row)
+                        @php
+                            $share = $row['total'] / $issueTotalAll;
+                            $length = $share * $circumference;
+                        @endphp
+                        <circle cx="54" cy="54" r="{{ $radius }}" fill="none"
+                            stroke="{{ $palette[$i % 10] }}" stroke-width="18"
+                            stroke-dasharray="{{ round($length, 2) }} {{ round($circumference - $length, 2) }}"
+                            stroke-dashoffset="{{ round(-$offset, 2) }}"
+                            transform="rotate(-90 54 54)"></circle>
+                        @php $offset += $length; @endphp
+                    @endforeach
+                </svg>
+                <ul style="list-style:none;margin:0;padding:0;display:grid;gap:.25rem;font-size:.72rem;">
+                    @foreach ($byIssue as $i => $row)
+                        <li style="display:flex;align-items:center;gap:.4rem;">
+                            <span style="width:.55rem;height:.55rem;border-radius:2px;background:{{ $palette[$i % 10] }};flex:none;"></span>
+                            <span>{{ ucfirst(str_replace('_', ' ', $row['issue_category'])) }}</span>
+                            <span class="muted">{{ $row['total'] }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+            @else
+                <p class="muted" style="font-size:.8rem;">No responses for these filters.</p>
+            @endif
+        </div>
+    </div>
+</div>
+
+<div class="cols" style="margin-top:22px;">
+    <div>
+        <h2 style="margin-top:0;">Who answered</h2>
+        <p class="muted" style="font-size:.75rem;margin:0 0 .5rem;">
+            Out of {{ $totals['responses'] ?? 0 }} response{{ ($totals['responses'] ?? 0) === 1 ? '' : 's' }}.
+            Answers collected before these questions were added count as did not answer.
+        </p>
+
+        @foreach ([
+            ['heading' => 'Gender', 'rows' => $byGender, 'colour' => $palette[0]],
+            ['heading' => 'Sector', 'rows' => $bySector, 'colour' => $palette[1]],
+        ] as $block)
+            @php
+                $maxRow = max(1, max(array_column($block['rows'] ?: [['total' => 1]], 'total')));
+            @endphp
+            <h3 style="font-size:.8rem;margin:.7rem 0 .35rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;">{{ $block['heading'] }}</h3>
+            <div class="chart-card">
+                @forelse ($block['rows'] as $row)
+                    @php
+                        $width = round($row['total'] / $maxRow * 100, 1);
+                        $isUnanswered = $row['value'] === '';
+                    @endphp
+                    <div style="display:grid;grid-template-columns:minmax(5rem,7rem) 1fr auto;align-items:center;gap:.5rem;margin-bottom:.35rem;">
+                        <span style="font-size:.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ $row['label'] }}">{{ $row['label'] }}</span>
+                        <span style="background:rgba(128,128,128,.18);border-radius:999px;height:.6rem;overflow:hidden;display:block;">
+                            <span style="display:block;width:{{ $width }}%;height:100%;border-radius:999px;background:{{ $isUnanswered ? 'rgba(128,128,128,.55)' : $block['colour'] }};"></span>
+                        </span>
+                        <span style="font-size:.72rem;font-weight:bold;">{{ $row['total'] }}</span>
+                    </div>
+                @empty
+                    <p class="muted" style="font-size:.8rem;">No responses for these filters.</p>
+                @endforelse
+            </div>
+        @endforeach
+    </div>
+
     <div>
         <h2 style="margin-top:0;">By supplier</h2>
         <table>
@@ -216,6 +349,32 @@
     </div>
 </div>
 </div>{{-- /summary-block: page 1 ends here --}}
+
+{{-- What people actually wrote. Before the response table, because a reader
+     usually wants the words first and the rows second. --}}
+<h2>What people wrote</h2>
+
+@if (count($comments) > 0)
+    <p class="muted" style="font-size:.75rem;margin:0 0 .6rem;">
+        {{ count($comments) }} written comment{{ count($comments) === 1 ? '' : 's' }}.
+        These are the public's own words and have not been edited. Treat this page as sensitive.
+    </p>
+
+    @foreach ($comments as $comment)
+        <div style="border-left:3px solid var(--line);padding:.35rem .7rem;margin-bottom:.6rem;page-break-inside:avoid;">
+            <div style="font-size:.72rem;color:var(--muted);margin-bottom:.15rem;">
+                {{ $comment['site_code'] }} &middot; {{ $comment['submitted_at'] }}
+                @if ($comment['rating'] !== '') &middot; {{ $comment['rating'] }}&star; @endif
+            </div>
+            @if ($comment['question'] !== '')
+                <div style="font-size:.72rem;font-weight:600;margin-bottom:.15rem;">{{ $comment['question'] }}</div>
+            @endif
+            <div style="font-size:.85rem;">{{ $comment['comment'] }}</div>
+        </div>
+    @endforeach
+@else
+    <p class="muted" style="font-size:.8rem;">Nobody left a written comment for these filters.</p>
+@endif
 
 {{-- Appendix: every individual response as one continuous table; CSS breaks the pages --}}
 <h2>Appendix — individual responses</h2>

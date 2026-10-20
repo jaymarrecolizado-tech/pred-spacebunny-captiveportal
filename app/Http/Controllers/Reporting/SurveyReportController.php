@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Reporting;
 
-use App\Services\Reporting\KpiReport;
+use App\Services\Reporting\ReportDocument;
 use App\Services\Reporting\ReportFilters;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
@@ -24,46 +24,44 @@ use Illuminate\Support\Facades\Auth;
  */
 class SurveyReportController extends Controller
 {
-    public function __invoke(Request $request, KpiReport $report): View
+    public function __invoke(Request $request, ReportDocument $document): View
     {
         $filters = ReportFilters::fromArray(
             $request->query(),
             (int) config('reporting.positive_rating_threshold'),
         );
 
-        $user = Auth::user();
+        // The PDF renders the same ReportDocument every download uses, so the
+        // figures, the charts and the comments cannot drift apart between
+        // formats.
+        $built = $document->build(Auth::user(), $filters);
+        $summary = $built;
 
-        // Same service, same filters, same scope rules as the KPI page.
-        $summary = collect($report->for($user, $filters))->except('filters')->all();
-
-        // The appendix is one continuous table and CSS breaks the printed pages.
-        // Paginating it would only produce page links, which do nothing once the
-        // browser is printing - the reader would have to print each screenful
-        // separately. Very large sets are capped and the cap is stated on the
-        // document; the CSV export remains the way to get every row.
-        $cap = (int) config('reporting.pdf_appendix_max_rows');
-        $scoped = $report->query($user, $filters);
-        $totalMatched = (clone $scoped)->count();
-
-        $responses = $scoped
-            ->with(['site:id,site_code,name,region,province,municipality', 'supplier:id,name', 'surveyVersion:id,version_number'])
-            ->latest('submitted_at')
-            ->limit($cap)
-            ->get();
+        $responses = $built['responses'];
+        $totalMatched = $built['total_matched'];
 
         return view('reporting.survey-report', [
+            'summary' => $summary['summary'],
             'totals' => $summary['totals'],
             'bySite' => $summary['by_site'],
             'bySupplier' => $summary['by_supplier'],
             'byIssue' => $summary['by_issue'],
+            // Series the summary-page charts are drawn from.
+            'ratingDistribution' => $summary['rating_distribution'],
+            'daily' => $summary['daily'],
+            // Who answered.
+            'byGender' => $summary['by_gender'],
+            'bySector' => $summary['by_sector'],
+            // Free-text answers, printed before the response table.
+            'comments' => $summary['comments'],
             'responses' => $responses,
             'totalMatched' => $totalMatched,
-            'truncated' => $totalMatched > $responses->count(),
-            'activeFilters' => array_filter($request->query()),
-            'generatedAt' => now(),
-            'generatedBy' => $user->email,
-            'positiveThreshold' => (int) config('reporting.positive_rating_threshold'),
-            'minimumSampleSize' => (int) config('reporting.minimum_sample_size'),
+            'truncated' => $summary['truncated'],
+            'activeFilters' => $summary['meta']['filters'] ? array_filter($summary['meta']['filters']) : [],
+            'generatedAt' => $summary['meta']['generated_at'],
+            'generatedBy' => $summary['meta']['generated_by'],
+            'positiveThreshold' => $summary['meta']['positive_threshold'],
+            'minimumSampleSize' => $summary['meta']['minimum_sample_size'],
         ]);
     }
 }

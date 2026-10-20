@@ -8,6 +8,8 @@ use App\Enums\UserRole;
 use App\Models\Site;
 use App\Models\SurveyResponse;
 use App\Models\User;
+use App\Services\Reporting\ReportDocument;
+use App\Services\Reporting\ReportFilters;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -167,10 +169,53 @@ class ReportDownloadTest extends TestCase
         $zip->close();
         @unlink($path);
 
-        // Summary sheet first, supporting data behind it.
-        $this->assertCount(2, $sheetNames);
+        // Summary first, then comments, then the supporting rows.
+        $this->assertCount(3, $sheetNames);
         $this->assertArrayHasKey(1, $sheetNames);
         $this->assertArrayHasKey(2, $sheetNames);
+        $this->assertArrayHasKey(3, $sheetNames);
+    }
+
+    public function test_the_rating_split_and_the_comments_people_wrote_reach_every_format(): void
+    {
+        $site = Site::factory()->create(['site_code' => 'POP-01']);
+
+        $this->addResponse($site, 5)->update(['answers_json' => ['rating' => 5, 'comment' => 'Signal is strong here.']]);
+        $this->addResponse($site, 1)->update(['answers_json' => ['rating' => 1, 'issue_type' => 'drops']]);
+
+        $admin = $this->admin();
+
+        // Only the box that was actually filled in comes out. The star rating and
+        // the dropdown answer are strings too, and finding comments by type is
+        // what stops them being reported as something the public wrote.
+        $comments = app(ReportDocument::class)
+            ->build($admin, ReportFilters::fromArray([], 4))['comments'];
+
+        $this->assertCount(1, $comments);
+        $this->assertSame('Signal is strong here.', $comments[0]['comment']);
+        $this->assertSame('Anything else?', $comments[0]['question']);
+
+        foreach (['csv' => '5 star', 'xml' => 'stars="5" count="1"'] as $format => $needle) {
+            $body = (string) $this->actingAs($admin)
+                ->get(route('reports.survey.download', ['format' => $format]))
+                ->getContent();
+
+            $this->assertStringContainsString('Signal is strong here.', $body, "{$format} must carry the comment");
+            $this->assertStringContainsString($needle, $body, "{$format} must carry the rating split");
+        }
+    }
+
+    public function test_the_summary_page_carries_charts_not_just_numbers(): void
+    {
+        Site::factory()->create(['site_code' => 'POP-01']);
+        $this->addResponse(Site::first(), 4);
+
+        $html = (string) $this->actingAs($this->admin())->get(route('reports.survey'))->getContent();
+
+        // Inline SVG and CSS bars only: no chart library, and nothing to fetch
+        // when the page is printed to PDF.
+        $this->assertStringContainsString('<svg', $html);
+        $this->assertStringNotContainsString('<script', $html);
     }
 
     public function test_an_unknown_format_falls_back_to_csv_instead_of_erroring(): void

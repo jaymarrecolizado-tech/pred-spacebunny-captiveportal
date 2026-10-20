@@ -3,6 +3,7 @@
 namespace App\Services\Reporting;
 
 use App\Models\SurveyResponse;
+use App\Models\SurveyVersion;
 use App\Models\User;
 use Illuminate\Support\Collection;
 
@@ -30,6 +31,12 @@ class ReportDocument
         $scoped = $report->query($user, $filters);
         $totalMatched = (clone $scoped)->count();
 
+        $responses = $scoped
+            ->with(['site:id,site_code,name,region,province,municipality', 'supplier:id,name', 'surveyVersion:id,version_number'])
+            ->latest('submitted_at')
+            ->limit((int) config('reporting.pdf_appendix_max_rows'))
+            ->get();
+
         return [
             'meta' => [
                 'generated_at' => now(),
@@ -43,21 +50,89 @@ class ReportDocument
             // The first thing every format shows.
             'summary' => $this->summaryLines($summary['totals'], (int) config('reporting.positive_rating_threshold')),
 
+            // Raw totals, for renderers that need a single figure the label/value
+            // pairs above do not expose (the PDF's rating chart, for one).
+            'totals' => $summary['totals'],
+
             // Supporting breakdowns.
             'by_site' => $summary['by_site'],
             'by_supplier' => $summary['by_supplier'],
             'by_issue' => $summary['by_issue'],
             'daily' => $summary['daily'],
+            // Star-by-star split, the series the summary chart is drawn from.
+            'rating_distribution' => $summary['rating_distribution'],
+            // Who answered, for the same reason.
+            'by_gender' => $summary['by_gender'],
+            'by_sector' => $summary['by_sector'],
 
             // Supporting row-level data, same order and cap as the PDF.
             'total_matched' => $totalMatched,
             'truncated' => $totalMatched > min($totalMatched, (int) config('reporting.pdf_appendix_max_rows')),
-            'responses' => $scoped
-                ->with(['site:id,site_code,name,region,province,municipality', 'supplier:id,name', 'surveyVersion:id,version_number'])
-                ->latest('submitted_at')
-                ->limit((int) config('reporting.pdf_appendix_max_rows'))
-                ->get(),
+            'responses' => $responses,
+            // Free-text answers, pulled separately so a reader can work through
+            // what people actually wrote without scanning the whole table.
+            'comments' => $this->commentsFrom($responses),
         ];
+    }
+
+    /**
+     * Free-text answers, with the question they came from.
+     *
+     * Comments are found by question TYPE, not by a hard-coded key: a survey can
+     * name its comment box anything, and a survey with two text boxes must
+     * return both rather than silently dropping one.
+     *
+     * These are the words members of the public typed. Unlike the rest of the
+     * report they are not scrubbed, so the exports label them as sensitive.
+     *
+     * @param  Collection<int, SurveyResponse>  $responses
+     * @return array<int, array<string, string>>
+     */
+    private function commentsFrom(Collection $responses): array
+    {
+        if ($responses->isEmpty()) {
+            return [];
+        }
+
+        // One query for every version in the batch, not one per response.
+        $versions = SurveyVersion::query()
+            ->whereIn('id', $responses->pluck('survey_version_id')->unique())
+            ->get()
+            ->keyBy('id');
+
+        $rows = [];
+
+        foreach ($responses as $response) {
+            $version = $versions->get($response->survey_version_id);
+
+            if ($version === null) {
+                continue;
+            }
+
+            foreach ($version->questions() as $question) {
+                if (($question['type'] ?? null) !== 'short_text') {
+                    continue;
+                }
+
+                $key = $question['key'] ?? null;
+                $value = $key === null ? null : data_get($response->answers_json, $key);
+
+                if (! is_string($value) || trim($value) === '') {
+                    continue;
+                }
+
+                $rows[] = [
+                    'reference' => substr((string) $response->id, 0, 8),
+                    'site_code' => $response->site?->site_code ?? '',
+                    'submitted_at' => $response->submitted_at?->format('Y-m-d H:i') ?? '',
+                    'rating' => (string) ($response->overall_rating ?? ''),
+                    'question' => (string) ($question['label'] ?? $key),
+                    'comment' => trim($value),
+                ];
+            }
+        }
+
+        return $rows;
     }
 
     /**

@@ -18,6 +18,7 @@ use App\Models\Survey;
 use App\Models\SurveyAssignment;
 use App\Models\SurveyVersion;
 use App\Models\User;
+use App\Services\Surveys\DemographicQuestions;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use RuntimeException;
@@ -152,6 +153,10 @@ class DemoSeeder extends Seeder
                         'help' => 'Optional.',
                         'max_length' => 500,
                     ],
+
+                    // Gender and sector, in the same order and wording as the
+                    // live survey on the server.
+                    ...DemographicQuestions::questions(),
                 ],
             ],
             'privacy_notice_version' => 'v1',

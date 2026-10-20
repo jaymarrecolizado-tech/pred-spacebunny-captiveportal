@@ -45,6 +45,8 @@ class SurveyResponse extends Model
         'answers_json',
         'overall_rating',
         'issue_category',
+        'gender',
+        'sector',
         'submitted_at',
         'created_at',
     ];

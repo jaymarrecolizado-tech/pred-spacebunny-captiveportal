@@ -63,6 +63,10 @@ class SubmitResponse
             'answers_json' => $clean,
             'overall_rating' => $this->ratingFrom($resolved->version, $clean),
             'issue_category' => $this->issueCategoryFrom($resolved->version, $clean),
+            // The demographics, in columns of their own, so the report can
+            // group by them without reading the answers blob.
+            'gender' => $this->reportedAs($resolved->version, $clean, 'gender'),
+            'sector' => $this->reportedAs($resolved->version, $clean, 'sector'),
             'submitted_at' => now(),
             'created_at' => now(),
         ]));
@@ -89,6 +93,11 @@ class SubmitResponse
                 continue;
             }
 
+            // A follow-up box only counts when the answer it hangs off says so.
+            if (! $this->isShown($question, $answers, $clean)) {
+                continue;
+            }
+
             $value = $answers[$key] ?? null;
 
             if ($value === null || $value === '') {
@@ -110,6 +119,31 @@ class SubmitResponse
         }
 
         return $clean;
+    }
+
+    /**
+     * Whether a question's answer should be accepted at all.
+     *
+     * A question with `show_when` hangs off another answer: a box that only
+     * makes sense once "Prefer to self-describe" is chosen. Without this check
+     * a stale form, a crafted request, or someone who changed their mind could
+     * store a self-description next to a gender they never picked.
+     *
+     * @param  array<string, mixed>  $question
+     * @param  array<string, mixed>  $answers
+     * @param  array<string, mixed>  $clean
+     */
+    private function isShown(array $question, array $answers, array $clean): bool
+    {
+        $when = $question['show_when'] ?? null;
+
+        if (! is_array($when) || ! isset($when['question'])) {
+            return true;
+        }
+
+        $actual = $clean[$when['question']] ?? $answers[$when['question']] ?? null;
+
+        return (string) $actual === (string) ($when['value'] ?? '');
     }
 
     /**
@@ -172,6 +206,24 @@ class SubmitResponse
         $ratingQuestion = $version->ratingQuestion();
 
         return $ratingQuestion === null ? null : ($answers[$ratingQuestion['key']] ?? null);
+    }
+
+    /**
+     * The answer that belongs in a report column, if the survey asks for it.
+     *
+     * @param  array<string, mixed>  $answers
+     */
+    private function reportedAs(SurveyVersion $version, array $answers, string $column): ?string
+    {
+        $question = $version->questionReportedAs($column);
+
+        if ($question === null) {
+            return null;
+        }
+
+        $value = $answers[$question['key']] ?? null;
+
+        return is_string($value) && $value !== '' ? $value : null;
     }
 
     /**
