@@ -113,12 +113,65 @@ class ReportWriter
             ]);
         }
 
+        // The three series behind the PDF charts, as plain rows. A spreadsheet
+        // or CSV cannot hold a chart in a way every reader will see, but these
+        // numbers are exactly what the graphs are drawn from, so a reader can
+        // rebuild or check them.
+        $line([]);
+        $line(['RATING BREAKDOWN (chart data)']);
+        $line(['Stars', 'Responses']);
+
+        foreach ($document['rating_distribution'] as $row) {
+            $line([$row['stars'].' star', $row['total']]);
+        }
+
+        $line([]);
+        $line(['RESPONSES BY DAY (chart data)']);
+        $line(['Day', 'Responses', 'Average rating']);
+
+        foreach ($document['daily'] as $row) {
+            $line([$row['day'], $row['responses'], $row['average_rating'] ?? '']);
+        }
+
+        // Who answered. "Did not answer" is in the figures on purpose: a
+        // breakdown that hides the people who skipped the question would read
+        // as if everybody had an opinion.
+        foreach ([
+            ['GENDER (chart data)', $document['by_gender']],
+            ['SECTOR (chart data)', $document['by_sector']],
+        ] as [$heading, $rows]) {
+            $line([]);
+            $line([$heading]);
+            $line(['Answer', 'Responses', 'Share of all responses']);
+
+            foreach ($rows as $row) {
+                $line([
+                    $row['label'],
+                    $row['total'],
+                    $row['share'] === null ? '' : $row['share'].'%',
+                ]);
+            }
+        }
+
         $line([]);
         $line(['ISSUES REPORTED']);
         $line(['Issue', 'Count']);
 
         foreach ($document['by_issue'] as $row) {
             $line([str_replace('_', ' ', $row['issue_category']), $row['total']]);
+        }
+
+        // Free-text answers. Labelled because, unlike the rest of the file,
+        // these are the public's own words and are not scrubbed.
+        $line([]);
+        $line(['COMMENTS (free text typed by the public - handle as sensitive)']);
+        $line(['Reference', 'Site', 'Submitted', 'Rating', 'Question', 'Comment']);
+
+        foreach ($document['comments'] as $c) {
+            $line([
+                $c['reference'], $c['site_code'], $c['submitted_at'],
+                $c['rating'], $c['question'], $c['comment'],
+            ]);
         }
 
         $line([]);
@@ -148,7 +201,8 @@ class ReportWriter
     }
 
     /**
-     * Two sheets: the summary first, the supporting rows behind it.
+     * Three sheets: summary and charts first, then the comments in the public's
+     * own words, then the supporting response rows.
      *
      * @param  array<string, mixed>  $document
      */
@@ -187,6 +241,27 @@ class ReportWriter
             ]);
         }
 
+        // Star-by-star split, the series the PDF's rating chart is drawn from.
+        $row([]);
+        $row(['Rating breakdown', 'Responses']);
+
+        foreach ($document['rating_distribution'] as $r) {
+            $row([$r['stars'].' star', $r['total']]);
+        }
+
+        // Who answered.
+        foreach ([
+            ['Gender', $document['by_gender']],
+            ['Sector', $document['by_sector']],
+        ] as [$heading, $rows]) {
+            $row([]);
+            $row([$heading, 'Responses', 'Share of all responses']);
+
+            foreach ($rows as $r) {
+                $row([$r['label'], $r['total'], $r['share'] === null ? '' : $r['share'].'%']);
+            }
+        }
+
         $row([]);
         $row(['By supplier', 'Responses', 'Rated (n)', 'Average rating', 'Note']);
 
@@ -197,7 +272,28 @@ class ReportWriter
             ]);
         }
 
-        // Sheet 2: the supporting data.
+        // Sheet 2: the comments. Their own sheet so they can be shared, or
+        // withheld, separately from the numbers.
+        $writer->addNewSheetAndMakeItCurrent();
+        $writer->getCurrentSheet()->setName('Comments');
+
+        $row(['Free text typed by the public. Handle as sensitive: these are the respondent\'s own words and are not scrubbed.']);
+        $row([]);
+
+        if ($document['comments'] === []) {
+            $row(['No written comments for these filters.']);
+        } else {
+            $row(['Reference', 'Site', 'Submitted', 'Rating', 'Question', 'Comment']);
+
+            foreach ($document['comments'] as $c) {
+                $row([
+                    $c['reference'], $c['site_code'], $c['submitted_at'],
+                    $c['rating'], $c['question'], $c['comment'],
+                ]);
+            }
+        }
+
+        // Sheet 3: the supporting data.
         $writer->addNewSheetAndMakeItCurrent();
         $writer->getCurrentSheet()->setName('Responses');
 
@@ -315,6 +411,72 @@ class ReportWriter
         }
 
         $root->appendChild($issues);
+
+        // The series the PDF's charts are drawn from, so a downstream reader can
+        // verify a graph instead of trusting an image.
+        $distribution = $dom->createElement('ratingDistribution');
+
+        foreach ($document['rating_distribution'] as $row) {
+            $bucket = $dom->createElement('rating');
+            $bucket->setAttribute('stars', (string) $row['stars']);
+            $bucket->setAttribute('count', (string) $row['total']);
+            $distribution->appendChild($bucket);
+        }
+
+        $root->appendChild($distribution);
+
+        // Who answered.
+        $demographics = $dom->createElement('demographics');
+
+        foreach ([
+            ['gender', $document['by_gender']],
+            ['sector', $document['by_sector']],
+        ] as [$name, $rows]) {
+            $group = $dom->createElement($name);
+
+            foreach ($rows as $row) {
+                $entry = $dom->createElement('answer');
+                $entry->setAttribute('label', $row['label']);
+                $entry->setAttribute('count', (string) $row['total']);
+                $entry->setAttribute('share', (string) ($row['share'] ?? ''));
+                $group->appendChild($entry);
+            }
+
+            $demographics->appendChild($group);
+        }
+
+        $root->appendChild($demographics);
+
+        $trend = $dom->createElement('dailyResponses');
+
+        foreach ($document['daily'] as $row) {
+            $day = $dom->createElement('day');
+            $add($day, 'date', $row['day']);
+            $add($day, 'responses', $row['responses']);
+            $add($day, 'averageRating', $row['average_rating']);
+            $trend->appendChild($day);
+        }
+
+        $root->appendChild($trend);
+
+        // Free-text answers as their own element so a consumer can extract the
+        // comments without parsing the response rows, and can see they are
+        // unsanitised public text.
+        $comments = $dom->createElement('comments');
+        $comments->setAttribute('sensitive', 'true');
+        $comments->setAttribute('note', 'Free text typed by the public. Not scrubbed.');
+
+        foreach ($document['comments'] as $row) {
+            $comment = $dom->createElement('comment');
+            $add($comment, 'reference', $row['reference']);
+            $add($comment, 'site', $row['site_code']);
+            $add($comment, 'submittedAt', $row['submitted_at']);
+            $add($comment, 'question', $row['question']);
+            $add($comment, 'text', $row['comment']);
+            $comments->appendChild($comment);
+        }
+
+        $root->appendChild($comments);
 
         $responses = $dom->createElement('responses');
         $responses->setAttribute('totalMatched', (string) $document['total_matched']);

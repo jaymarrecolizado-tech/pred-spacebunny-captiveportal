@@ -200,6 +200,42 @@
         </x-filament::section>
     </div>
 
+    {{-- Who answered. The point of the demographic questions: which groups are
+         actually on the free Wi-Fi. "Did not answer" is shown as its own bar,
+         because a chart that hides the people who skipped would read as if
+         everybody had an opinion. --}}
+    <div style="display:grid;gap:1.5rem;grid-template-columns:repeat(auto-fit,minmax(20rem,1fr));margin-block:1.5rem;">
+        @foreach ([
+            ['heading' => 'Who answered — gender', 'rows' => $byGender, 'colour' => '#2563eb'],
+            ['heading' => 'Who answered — sector', 'rows' => $bySector, 'colour' => '#0891b2'],
+        ] as $block)
+            @php
+                $maxRow = max(1, max(array_column($block['rows'] ?: [['total' => 1]], 'total')));
+            @endphp
+            <x-filament::section icon="heroicon-o-users" :heading="$block['heading']"
+                description="Out of {{ $totals['responses'] ?? 0 }} response{{ ($totals['responses'] ?? 0) === 1 ? '' : 's' }}. Answers collected before these questions were added count as did not answer.">
+                @forelse ($block['rows'] as $row)
+                    @php
+                        $pct = round($row['total'] / $maxRow * 100, 1);
+                        $isUnanswered = $row['value'] === '';
+                    @endphp
+                    <div style="display:grid;grid-template-columns:minmax(7rem,10rem) 1fr auto;align-items:center;gap:.6rem;margin-bottom:.45rem;">
+                        <div style="font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ $row['label'] }}">{{ $row['label'] }}</div>
+                        <div style="background:rgba(128,128,128,.18);border-radius:999px;height:.85rem;overflow:hidden;">
+                            <div style="width:{{ $pct }}%;height:100%;border-radius:999px;background:{{ $isUnanswered ? 'rgba(128,128,128,.55)' : $block['colour'] }};"></div>
+                        </div>
+                        <div style="font-size:.78rem;font-weight:600;min-width:4.5rem;text-align:right;">
+                            {{ $row['total'] }}
+                            <span style="opacity:.65;font-weight:400;">{{ $row['share'] === null ? '' : $row['share'].'%' }}</span>
+                        </div>
+                    </div>
+                @empty
+                    <p class="fi-section-header-description">No responses for these filters.</p>
+                @endforelse
+            </x-filament::section>
+        @endforeach
+    </div>
+
     {{-- Download buttons: the same report and the same filters, in four formats.
          Each renders the one ReportDocument, so the figures cannot disagree. --}}
     <x-filament::section icon="heroicon-o-arrow-down-tray" heading="Download this report" class="mt-6">

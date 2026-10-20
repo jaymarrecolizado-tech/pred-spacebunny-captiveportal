@@ -236,6 +236,106 @@ class KpiReportTest extends TestCase
         $this->assertSame(1, $totals['distinct_devices']);
     }
 
+    /**
+     * Every breakdown must count the same rows the totals count.
+     *
+     * Regression guard: the breakdowns shared one query builder, and the first
+     * one to add a GROUP BY to it quietly changed what the next ones counted.
+     * The report showed per-site counts in the "issues" and "rating" charts and
+     * nobody noticed, because the numbers looked plausible.
+     */
+    public function test_every_breakdown_counts_the_same_rows_the_totals_count(): void
+    {
+        $site = Site::factory()->create();
+        $other = Site::factory()->create();
+
+        $this->response($site, 5, 'none');
+        $this->response($site, 4, 'slow');
+        $this->response($site, 4, 'none');
+        $this->response($other, 2, 'slow');
+
+        $report = app(KpiReport::class)->for($this->admin(), new ReportFilters);
+
+        $this->assertSame(4, $report['totals']['responses']);
+
+        $issues = collect($report['by_issue'])->keyBy('issue_category');
+        $this->assertSame(2, $issues['none']['total']);
+        $this->assertSame(2, $issues['slow']['total']);
+
+        $ratings = collect($report['rating_distribution'])->keyBy('stars');
+        $this->assertSame(1, $ratings[5]['total']);
+        $this->assertSame(2, $ratings[4]['total']);
+        $this->assertSame(1, $ratings[2]['total']);
+
+        $sites = collect($report['by_site'])->keyBy('label');
+        $this->assertSame(3, $sites[$site->site_code]['responses']);
+        $this->assertSame(1, $sites[$other->site_code]['responses']);
+
+        $this->assertSame(4, array_sum(array_column($report['daily'], 'responses')));
+    }
+
+    public function test_who_answered_is_broken_down_and_the_people_who_skipped_are_counted(): void
+    {
+        $site = Site::factory()->create();
+
+        $this->response($site, 5, 'none')->update(['gender' => 'female', 'sector' => 'student']);
+        $this->response($site, 4, 'none')->update(['gender' => 'female', 'sector' => 'student']);
+        $this->response($site, 3, 'slow')->update(['gender' => 'male', 'sector' => 'farmer_fisherfolk']);
+        // A response from before the questions were asked.
+        $this->response($site, 2, 'none');
+
+        $report = app(KpiReport::class)->for($this->admin(), new ReportFilters);
+
+        $gender = collect($report['by_gender'])->keyBy('label');
+
+        $this->assertSame(2, $gender['Female']['total']);
+        $this->assertSame(1, $gender['Male']['total']);
+        // The rows come out in the order the survey asks them, not by count,
+        // and every option is listed even when nobody chose it.
+        $this->assertSame(
+            ['Male', 'Female', 'Non-binary', 'Prefer to self-describe', 'Prefer not to say', 'Did not answer'],
+            array_column($report['by_gender'], 'label'),
+        );
+        // Somebody who skipped is counted, not quietly left out: a breakdown
+        // without it would read as if everybody had an opinion.
+        $this->assertSame(1, $gender['Did not answer']['total']);
+        $this->assertSame(25.0, $gender['Did not answer']['share']);
+
+        $sector = collect($report['by_sector'])->keyBy('label');
+
+        $this->assertSame(2, $sector['Student']['total']);
+        // The option label comes from the survey, not from the stored value.
+        $this->assertSame(1, $sector['Farmer / Fisherfolk']['total']);
+        $this->assertSame(1, $sector['Did not answer']['total']);
+    }
+
+    public function test_who_answered_respects_scope(): void
+    {
+        $mine = Site::factory()->create();
+        $theirs = Site::factory()->create();
+
+        $this->response($mine, 5, 'none')->update(['gender' => 'female']);
+        $this->response($theirs, 1, 'slow')->update(['gender' => 'male']);
+
+        $user = User::factory()->create([
+            'role' => UserRole::SupplierAdmin,
+            'scope_type' => ScopeType::Supplier,
+            'scope_supplier_id' => $mine->supplier_id,
+        ]);
+
+        $report = app(KpiReport::class)->for($user, new ReportFilters);
+
+        $gender = collect($report['by_gender'])->keyBy('label');
+
+        // Otherwise the breakdown would leak another supplier's answers.
+        $this->assertSame(1, $gender['Female']['total']);
+        $this->assertSame(0, $gender['Male']['total']);
+        // The other supplier's response is out of scope, so it is not counted
+        // here either - not even as a person who did not answer.
+        $this->assertSame(0, $gender['Did not answer']['total']);
+        $this->assertSame(1, $report['totals']['responses']);
+    }
+
     public function test_filters_can_be_built_from_array_input(): void
     {
         $filters = ReportFilters::fromArray([

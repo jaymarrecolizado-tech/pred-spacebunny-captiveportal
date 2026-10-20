@@ -7,6 +7,7 @@
     <meta name="robots" content="noindex, nofollow">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @yield('head')
+    @stack('head')
     <style>
         .star-rating{display:flex;flex-direction:row-reverse;justify-content:flex-end;gap:.1rem}
         .star-rating input{position:absolute;opacity:0}

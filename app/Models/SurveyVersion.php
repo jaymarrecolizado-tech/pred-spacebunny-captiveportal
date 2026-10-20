@@ -108,6 +108,27 @@ class SurveyVersion extends Model
     }
 
     /**
+     * The question whose answer belongs in a given report column, if the
+     * survey asks for it.
+     *
+     * A question opts in with `reports_as`, so the answer can be stored in a
+     * column of its own and the report can group by it without reading the
+     * answers blob.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function questionReportedAs(string $column): ?array
+    {
+        foreach ($this->questions() as $question) {
+            if (($question['reports_as'] ?? null) === $column) {
+                return $question;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     public function issueCategoryQuestion(): ?array
