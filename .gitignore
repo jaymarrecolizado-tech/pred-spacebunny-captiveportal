@@ -40,3 +40,4 @@ graphify-out/
 # Never publish these; keep them locally only.
 deploy/DEPLOYMENT.md
 deploy/NOTES-fpiapulse-shared-host.md
+deploy/sync-to-server.ps1
