@@ -95,4 +95,20 @@ final class DemographicQuestions
 
         return $labels;
     }
+
+    /**
+     * The readable label for one stored answer.
+     *
+     * A value the platform does not recognise is still shown, rather than
+     * blanked: it came from a real person and hiding it would lose data.
+     */
+    public static function label(string $column, ?string $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return self::optionLabels()[$column][$value]
+            ?? ucfirst(str_replace('_', ' ', $value));
+    }
 }

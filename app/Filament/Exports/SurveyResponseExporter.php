@@ -3,6 +3,7 @@
 namespace App\Filament\Exports;
 
 use App\Models\SurveyResponse;
+use App\Services\Surveys\DemographicQuestions;
 use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
 use Filament\Actions\Exports\Models\Export;
@@ -59,6 +60,16 @@ class SurveyResponseExporter extends Exporter
             ExportColumn::make('issue_category')
                 ->label('Issue')
                 ->state(fn (SurveyResponse $record) => $record->issue_category ?? ''),
+
+            // Gender and sector, as the person answered them. Blank means the
+            // person did not answer, which is not the same as an empty answer.
+            ExportColumn::make('gender')
+                ->label('Gender')
+                ->state(fn (SurveyResponse $record) => DemographicQuestions::label('gender', $record->gender) ?? ''),
+
+            ExportColumn::make('sector')
+                ->label('Sector')
+                ->state(fn (SurveyResponse $record) => DemographicQuestions::label('sector', $record->sector) ?? ''),
 
             // Free text is exported as stored; it may be sensitive, so the
             // export is an access-controlled action, not a public file.

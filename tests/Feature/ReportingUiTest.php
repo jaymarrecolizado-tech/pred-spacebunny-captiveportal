@@ -173,6 +173,50 @@ class ReportingUiTest extends TestCase
         $this->assertContains('Attribution', $labels);
         $this->assertContains('Rating', $labels);
         $this->assertContains('Issue', $labels);
+        $this->assertContains('Gender', $labels);
+        $this->assertContains('Sector', $labels);
         $this->assertSame(SurveyResponse::class, SurveyResponseExporter::getModel());
+    }
+
+    public function test_the_responses_table_shows_gender_and_sector_as_answered(): void
+    {
+        $site = Site::factory()->create();
+        SurveyResponse::factory()->create([
+            'site_id' => $site->id, 'supplier_id' => $site->supplier_id,
+            'overall_rating' => 4, 'issue_category' => 'none',
+            'gender' => 'female', 'sector' => 'farmer_fisherfolk',
+        ]);
+
+        Livewire::actingAs($this->admin())
+            ->test(ListSurveyResponses::class)
+            ->assertOk()
+            // The label the person was shown, not the stored value.
+            ->assertSee('Female')
+            ->assertSee('Farmer / Fisherfolk');
+    }
+
+    public function test_the_responses_table_can_filter_on_gender_including_the_people_who_skipped(): void
+    {
+        $site = Site::factory()->create();
+        $answered = SurveyResponse::factory()->create([
+            'site_id' => $site->id, 'supplier_id' => $site->supplier_id,
+            'gender' => 'female', 'sector' => 'student',
+        ]);
+        $skipped = SurveyResponse::factory()->create([
+            'site_id' => $site->id, 'supplier_id' => $site->supplier_id,
+            'gender' => null, 'sector' => null,
+        ]);
+
+        Livewire::actingAs($this->admin())
+            ->test(ListSurveyResponses::class)
+            ->set('tableFilters.gender.value', 'female')
+            ->assertCanSeeTableRecords([$answered])
+            ->assertCanNotSeeTableRecords([$skipped]);
+
+        Livewire::actingAs($this->admin())
+            ->test(ListSurveyResponses::class)
+            ->set('tableFilters.gender.value', '__not_answered__')
+            ->assertCanSeeTableRecords([$skipped])
+            ->assertCanNotSeeTableRecords([$answered]);
     }
 }
