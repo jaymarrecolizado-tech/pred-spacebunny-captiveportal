@@ -51,6 +51,71 @@ class OmadaAdapterTest extends TestCase
         return $params;
     }
 
+    /**
+     * A portal bound to a network instead of an SSID.
+     *
+     * Captured from the real controller at Cagayan Museum: the access point
+     * is called gatewayMac, the radio is called vid, and there is no SSID
+     * name at all. Requiring apMac refused every one of those devices, and the
+     * refusal looked like a portal that was simply not set up.
+     *
+     * @return array<string, string>
+     */
+    private function networkHandoff(): array
+    {
+        return [
+            'clientMac' => 'CE-73-D0-4A-A1-27',
+            'clientIp' => '163.227.101.130',
+            'gatewayMac' => '18-69-45-7F-19-B2',
+            'vid' => '1',
+            'site' => '6a6734424ef8361fe4bcee45',
+            'redirectUrl' => 'http://conn-service-us-04.allawnos.com/generate204',
+            't' => (string) time(),
+        ];
+    }
+
+    public function test_a_network_portal_handoff_is_accepted(): void
+    {
+        [$site] = $this->activeSiteWithSurvey();
+
+        $this->get(route('portal.omada', ['siteCode' => $site->site_code]).'?'.http_build_query($this->networkHandoff()))
+            ->assertOk()
+            ->assertSee($site->name);
+    }
+
+    public function test_a_network_portal_handoff_still_records_the_device(): void
+    {
+        [$site] = $this->activeSiteWithSurvey();
+
+        $params = $this->networkHandoff();
+        $url = route('portal.omada', ['siteCode' => $site->site_code]).'?'.http_build_query($params);
+
+        $this->get($url)->assertOk();
+
+        $this->post(route('portal.omada.store', ['siteCode' => $site->site_code]).'?'.http_build_query($params), [
+            'answers' => $this->validAnswers(),
+            'idempotency_key' => (string) Str::uuid(),
+        ])->assertRedirect();
+
+        // The hashed MAC is what correlates a later authorization with the
+        // survey that was answered.
+        $this->assertSame(
+            hash('sha256', 'CE-73-D0-4A-A1-27'),
+            SurveyResponse::sole()->session_reference_hash,
+        );
+    }
+
+    public function test_a_handoff_with_no_access_point_at_all_is_still_refused(): void
+    {
+        [$site] = $this->activeSiteWithSurvey();
+
+        $params = $this->networkHandoff();
+        unset($params['gatewayMac']);
+
+        $this->get(route('portal.omada', ['siteCode' => $site->site_code]).'?'.http_build_query($params))
+            ->assertRedirect(route('portal.unavailable'));
+    }
+
     public function test_a_valid_handoff_opens_the_survey(): void
     {
         [$site] = $this->activeSiteWithSurvey();
