@@ -118,9 +118,15 @@ class OmadaHotspotClient
         $ok = $response->json('errorCode') === 0;
 
         // MACs are logged fingerprinted: enough to correlate, not to track.
-        Log::info('portal.omada.authorize_attempt', [
+        //
+        // A refused authorization is logged as a warning, not as info: this is
+        // the step that decides whether the person gets internet, and the
+        // production log level drops info messages. A silent refusal would look
+        // exactly like a working portal that never lets anyone through.
+        Log::warning('portal.omada.authorize_attempt', [
             'ok' => $ok,
             'errorCode' => $response->json('errorCode'),
+            'msg' => $response->json('msg'),
             'client' => $this->fingerprint($client['clientMac'] ?? ''),
         ]);
 
