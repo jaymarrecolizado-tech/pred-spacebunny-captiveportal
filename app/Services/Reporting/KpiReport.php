@@ -5,6 +5,7 @@ namespace App\Services\Reporting;
 use App\Enums\AttributionMethod;
 use App\Models\Site;
 use App\Models\SurveyResponse;
+use App\Models\SurveyVersion;
 use App\Models\User;
 use App\Services\Surveys\DemographicQuestions;
 use Illuminate\Database\Eloquent\Builder;
@@ -97,6 +98,9 @@ class KpiReport
             // Wi-Fi, and which sectors DICT is reaching.
             'by_gender' => $this->demographicBreakdown($base, 'gender', $responses),
             'by_sector' => $this->demographicBreakdown($base, 'sector', $responses),
+            // Written answers, grouped by location so the reader can see where
+            // the words came from without reading the whole appendix.
+            'comments_by_site' => $this->commentsBySite($base, $responses),
         ];
     }
 
@@ -187,6 +191,91 @@ class KpiReport
         ];
 
         return array_values($rows);
+    }
+
+    /**
+     * Written answers grouped by location.
+     *
+     * Comments are found by question type, not by a hard-coded key, so a
+     * survey that renames its comment box still counts. The total includes
+     * every short_text answer, so a survey with two text boxes counts both.
+     *
+     * The share is of all responses in scope, so the rows say "5 comments
+     * out of 717 responses" rather than hiding the people who did not write.
+     *
+     * @param  Builder<SurveyResponse>  $base
+     * @return array<int, array{site_code: string, site_name: string, total: int, share: float|null}>
+     */
+    private function commentsBySite(Builder $base, int $totalResponses): array
+    {
+        // One query for every version in the batch, not one per response.
+        $versions = SurveyVersion::query()
+            ->whereIn('id', (clone $base)->distinct()->pluck('survey_version_id'))
+            ->get()
+            ->keyBy('id');
+
+        $commentKeys = [];
+
+        foreach ($versions as $version) {
+            foreach ($version->questions() as $question) {
+                if (($question['type'] ?? null) === 'short_text') {
+                    $commentKeys[$version->id][] = $question['key'];
+                }
+            }
+        }
+
+        if ($commentKeys === []) {
+            return [];
+        }
+
+        $responses = (clone $base)
+            ->with('site:id,site_code,name')
+            ->get(['id', 'site_id', 'survey_version_id', 'answers_json']);
+
+        $bySite = [];
+
+        foreach ($responses as $response) {
+            $keys = $commentKeys[$response->survey_version_id] ?? [];
+
+            $hasComment = false;
+
+            foreach ($keys as $key) {
+                $value = data_get($response->answers_json, $key);
+
+                if (is_string($value) && trim($value) !== '') {
+                    $hasComment = true;
+
+                    break;
+                }
+            }
+
+            if (! $hasComment) {
+                continue;
+            }
+
+            $code = $response->site?->site_code ?? 'Unknown';
+            $name = $response->site?->name ?? 'Unknown';
+
+            if (! isset($bySite[$code])) {
+                $bySite[$code] = [
+                    'site_code' => $code,
+                    'site_name' => $name,
+                    'total' => 0,
+                ];
+            }
+
+            $bySite[$code]['total']++;
+        }
+
+        $result = array_values($bySite);
+
+        usort($result, fn (array $a, array $b): int => $b['total'] <=> $a['total']);
+
+        foreach ($result as &$row) {
+            $row['share'] = $totalResponses === 0 ? null : round($row['total'] / $totalResponses * 100, 1);
+        }
+
+        return $result;
     }
 
     /**

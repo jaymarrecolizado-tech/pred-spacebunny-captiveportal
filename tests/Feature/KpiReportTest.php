@@ -336,6 +336,27 @@ class KpiReportTest extends TestCase
         $this->assertSame(1, $report['totals']['responses']);
     }
 
+    public function test_comments_are_grouped_by_site_with_their_share(): void
+    {
+        $site = Site::factory()->create(['site_code' => 'POP-01']);
+        $other = Site::factory()->create(['site_code' => 'POP-02']);
+
+        // Two comments here, one there, one with no comment at all.
+        $this->response($site, 5, 'none')->update(['answers_json' => ['comment' => 'Slow near the entrance.']]);
+        $this->response($site, 4, 'none')->update(['answers_json' => ['comment' => 'Fine.']]);
+        $this->response($other, 3, 'slow')->update(['answers_json' => ['comment' => 'Drops constantly.']]);
+        $this->response($other, 2, 'none');
+
+        $report = app(KpiReport::class)->for($this->admin(), new ReportFilters);
+
+        $comments = collect($report['comments_by_site'])->keyBy('site_code');
+
+        $this->assertSame(2, $comments['POP-01']['total']);
+        $this->assertSame(1, $comments['POP-02']['total']);
+        $this->assertSame(50.0, $comments['POP-01']['share']); // 2 of 4
+        $this->assertSame(25.0, $comments['POP-02']['share']); // 1 of 4
+    }
+
     public function test_filters_can_be_built_from_array_input(): void
     {
         $filters = ReportFilters::fromArray([

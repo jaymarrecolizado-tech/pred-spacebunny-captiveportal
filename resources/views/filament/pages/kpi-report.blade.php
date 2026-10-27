@@ -308,6 +308,7 @@
                             <th class="fi-ta-header-cell">Site</th>
                             <th class="fi-ta-header-cell">Location</th>
                             <th class="fi-ta-header-cell">Responses</th>
+                            <th class="fi-ta-header-cell">Share</th>
                             <th class="fi-ta-header-cell">Avg rating (n)</th>
                         </tr>
                     </thead>
@@ -316,11 +317,13 @@
                             @php
                                 $rowAvg = $row['average_rating'] ?? null;
                                 $tint = $rowAvg === null ? '' : ($rowAvg >= 4 ? 'color:#15803d;' : ($rowAvg >= 3 ? 'color:#b45309;' : 'color:#b91c1c;'));
+                                $rowShare = ($totals['responses'] ?? 0) === 0 ? null : round($row['responses'] / $totals['responses'] * 100, 1);
                             @endphp
                             <tr class="fi-ta-row">
                                 <td class="fi-ta-cell">{{ $row['label'] }}</td>
                                 <td class="fi-ta-cell">{{ $row['location'] ?? '—' }}</td>
                                 <td class="fi-ta-cell">{{ $row['responses'] }}</td>
+                                <td class="fi-ta-cell">{{ $rowShare === null ? '—' : $rowShare.'%' }}</td>
                                 <td class="fi-ta-cell">
                                     <span style="font-weight:700;{{ $tint }}">{{ $row['average_rating'] ?? '—' }}</span>
                                     <span class="fi-section-header-description">(n={{ $row['rated'] }})</span>
@@ -331,7 +334,7 @@
                             </tr>
                         @empty
                             <tr class="fi-ta-row">
-                                <td class="fi-ta-cell" colspan="4">No responses for these filters.</td>
+                                <td class="fi-ta-cell" colspan="5">No responses for these filters.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -393,6 +396,42 @@
             @empty
                 <p class="fi-section-header-description">No responses for these filters.</p>
             @endforelse
+        </x-filament::section>
+
+        {{-- Comments by location. People often write in where the Wi-Fi is
+             worst, so the count per site matters more than the flat list. --}}
+        <x-filament::section icon="heroicon-o-chat-bubble-left-ellipsis" heading="Comments by location" description="Written answers, grouped by site.">
+            <div style="overflow-x:auto;">
+                <table class="fi-ta">
+                    <thead>
+                        <tr>
+                            <th class="fi-ta-header-cell">Site</th>
+                            <th class="fi-ta-header-cell">Location</th>
+                            <th class="fi-ta-header-cell">Comments</th>
+                            <th class="fi-ta-header-cell">Share of all responses</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($commentsBySite as $row)
+                            <tr class="fi-ta-row">
+                                <td class="fi-ta-cell">{{ $row['site_code'] }}</td>
+                                <td class="fi-ta-cell">{{ $row['site_name'] }}</td>
+                                <td class="fi-ta-cell">{{ $row['total'] }}</td>
+                                <td class="fi-ta-cell">{{ $row['share'] === null ? '—' : $row['share'].'%' }}</td>
+                            </tr>
+                        @empty
+                            <tr class="fi-ta-row">
+                                <td class="fi-ta-cell" colspan="4">Nobody left a written comment for these filters.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            @if (count($commentsBySite) > 0)
+                <p class="fi-section-header-description" style="margin-top:.5rem;">
+                    {{ array_sum(array_column($commentsBySite, 'total')) }} written comment{{ array_sum(array_column($commentsBySite, 'total')) === 1 ? '' : 's' }} in total.
+                </p>
+            @endif
         </x-filament::section>
 
         {{-- Daily --}}

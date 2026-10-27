@@ -64,6 +64,8 @@ class ReportDocument
             // Who answered, for the same reason.
             'by_gender' => $summary['by_gender'],
             'by_sector' => $summary['by_sector'],
+            // Comments grouped by location.
+            'comments_by_site' => $summary['comments_by_site'],
 
             // Supporting row-level data, same order and cap as the PDF.
             'total_matched' => $totalMatched,
