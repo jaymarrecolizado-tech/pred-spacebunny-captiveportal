@@ -153,6 +153,20 @@ class ReportWriter
             }
         }
 
+        // Comments per location.
+        $line([]);
+        $line(['COMMENTS BY LOCATION (chart data)']);
+        $line(['Site', 'Location', 'Comments', 'Share of all responses']);
+
+        foreach ($document['comments_by_site'] as $row) {
+            $line([
+                $row['site_code'],
+                $row['site_name'],
+                $row['total'],
+                $row['share'] === null ? '' : $row['share'].'%',
+            ]);
+        }
+
         $line([]);
         $line(['ISSUES REPORTED']);
         $line(['Issue', 'Count']);
@@ -260,6 +274,14 @@ class ReportWriter
             foreach ($rows as $r) {
                 $row([$r['label'], $r['total'], $r['share'] === null ? '' : $r['share'].'%']);
             }
+        }
+
+        // Comments per location.
+        $row([]);
+        $row(['Comments by location', 'Comments', 'Share of all responses']);
+
+        foreach ($document['comments_by_site'] as $r) {
+            $row([$r['site_code'], $r['total'], $r['share'] === null ? '' : $r['share'].'%']);
         }
 
         $row([]);
@@ -446,6 +468,20 @@ class ReportWriter
         }
 
         $root->appendChild($demographics);
+
+        // Comments grouped by location.
+        $commentsBySiteXml = $dom->createElement('commentsBySite');
+
+        foreach ($document['comments_by_site'] as $row) {
+            $entry = $dom->createElement('site');
+            $entry->setAttribute('code', $row['site_code']);
+            $entry->setAttribute('name', $row['site_name']);
+            $entry->setAttribute('count', (string) $row['total']);
+            $entry->setAttribute('share', (string) ($row['share'] ?? ''));
+            $commentsBySiteXml->appendChild($entry);
+        }
+
+        $root->appendChild($commentsBySiteXml);
 
         $trend = $dom->createElement('dailyResponses');
 

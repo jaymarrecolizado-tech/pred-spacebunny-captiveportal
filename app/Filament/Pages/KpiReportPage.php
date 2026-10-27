@@ -61,6 +61,7 @@ class KpiReportPage extends Page
             'byIssue' => $this->report['by_issue'] ?? [],
             'byGender' => $this->report['by_gender'] ?? [],
             'bySector' => $this->report['by_sector'] ?? [],
+            'commentsBySite' => $this->report['comments_by_site'] ?? [],
             'daily' => $this->report['daily'] ?? [],
             'activeFilters' => $this->activeFilters,
             'provinces' => Site::query()->visibleTo(auth()->user())->whereNotNull('province')

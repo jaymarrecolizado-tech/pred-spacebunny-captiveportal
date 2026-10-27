@@ -350,6 +350,39 @@
 </div>
 </div>{{-- /summary-block: page 1 ends here --}}
 
+{{-- Comments grouped by location, so the reader can see where the words came
+     from without scanning the whole table. --}}
+<h2>Comments by location</h2>
+<div class="chart-card">
+    @if (count($commentsBySite) > 0)
+        <table>
+            <thead>
+                <tr>
+                    <th>Site</th>
+                    <th>Location</th>
+                    <th class="num">Comments</th>
+                    <th class="num">Share</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($commentsBySite as $row)
+                    <tr>
+                        <td>{{ $row['site_code'] }}</td>
+                        <td>{{ $row['site_name'] }}</td>
+                        <td class="num">{{ $row['total'] }}</td>
+                        <td class="num">{{ $row['share'] === null ? '—' : $row['share'].'%' }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+        <p class="muted" style="font-size:.75rem;margin-top:.5rem;">
+            {{ array_sum(array_column($commentsBySite, 'total')) }} written comment{{ array_sum(array_column($commentsBySite, 'total')) === 1 ? '' : 's' }} in total.
+        </p>
+    @else
+        <p class="muted" style="font-size:.8rem;">Nobody left a written comment for these filters.</p>
+    @endif
+</div>
+
 {{-- What people actually wrote. Before the response table, because a reader
      usually wants the words first and the rows second. --}}
 <h2>What people wrote</h2>
