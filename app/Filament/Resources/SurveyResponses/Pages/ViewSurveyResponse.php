@@ -6,9 +6,9 @@ use App\Filament\Resources\SurveyResponses\SurveyResponseResource;
 use App\Models\SurveyResponse;
 use App\Services\Surveys\DemographicQuestions;
 use Filament\Infolists\Components\KeyValueEntry;
-use Filament\Infolists\Components\Section;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
 class ViewSurveyResponse extends ViewRecord
