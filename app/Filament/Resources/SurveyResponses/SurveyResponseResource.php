@@ -42,6 +42,7 @@ class SurveyResponseResource extends Resource
     {
         return [
             'index' => Pages\ListSurveyResponses::route('/'),
+            'view' => Pages\ViewSurveyResponse::route('/{record}'),
         ];
     }
 }
