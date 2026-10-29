@@ -6,6 +6,7 @@ use App\Enums\AttributionMethod;
 use App\Models\SurveyResponse;
 use App\Models\User;
 use App\Services\Surveys\DemographicQuestions;
+use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -62,8 +63,11 @@ class SurveyResponsesTable
                 self::demographicFilter('gender', 'Gender'),
                 self::demographicFilter('sector', 'Sector'),
             ])
-            // Responses are read-only in this phase (SurveyResponsePolicy).
-            ->recordActions([])
+            // Responses are read-only in this phase (SurveyResponsePolicy). The view
+            // page shows every answer the person gave, mapped to their questions.
+            ->recordActions([
+                ViewAction::make(),
+            ])
             ->toolbarActions([]);
     }
 

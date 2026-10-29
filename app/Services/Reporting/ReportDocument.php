@@ -5,6 +5,7 @@ namespace App\Services\Reporting;
 use App\Models\SurveyResponse;
 use App\Models\SurveyVersion;
 use App\Models\User;
+use App\Services\Surveys\DemographicQuestions;
 use Illuminate\Support\Collection;
 
 /**
@@ -205,7 +206,7 @@ class ReportDocument
     {
         return [
             'reference', 'submitted_at', 'site_code', 'site_name', 'municipality', 'province',
-            'supplier', 'survey_version', 'rating', 'issue', 'attribution',
+            'supplier', 'survey_version', 'rating', 'issue', 'attribution', 'gender', 'sector',
         ];
     }
 
@@ -228,6 +229,8 @@ class ReportDocument
             'rating' => $response->overall_rating,
             'issue' => $response->issue_category,
             'attribution' => $response->attribution_method->label(),
+            'gender' => DemographicQuestions::label('gender', $response->gender),
+            'sector' => DemographicQuestions::label('sector', $response->sector),
         ];
     }
 
