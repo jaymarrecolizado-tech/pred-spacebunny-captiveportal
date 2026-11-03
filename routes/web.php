@@ -4,6 +4,7 @@ use App\Http\Controllers\Portal\OmadaAdapterController;
 use App\Http\Controllers\Portal\PortalSessionController;
 use App\Http\Controllers\PublicSurveyController;
 use App\Http\Controllers\Reporting\ReportDownloadController;
+use App\Http\Controllers\Reporting\SpeedMonitorController;
 use App\Http\Controllers\Reporting\SurveyReportController;
 use Filament\Http\Middleware\Authenticate;
 use Illuminate\Support\Facades\Route;
@@ -61,6 +62,10 @@ Route::get('admin/reports/survey', SurveyReportController::class)
 Route::get('admin/reports/survey/download', ReportDownloadController::class)
     ->middleware(Authenticate::class)
     ->name('reports.survey.download');
+
+Route::get('admin/speed-monitor/download', [SpeedMonitorController::class, 'download'])
+    ->middleware(Authenticate::class)
+    ->name('speed.monitor.download');
 
 /*
 | Omada External Portal Server adapter (receive side). Omada appends its
