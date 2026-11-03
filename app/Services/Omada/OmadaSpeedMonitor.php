@@ -5,6 +5,7 @@ namespace App\Services\Omada;
 use App\Enums\RecordStatus;
 use App\Models\Site;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 
 /**
  * A live snapshot of how fast each location is right now.
@@ -12,7 +13,10 @@ use Illuminate\Support\Facades\Cache;
  * The controller exposes no historical speed data - only the current rate of
  * every connected client. So "monitoring" here is a snapshot refreshed on
  * demand, not a trend. To get trends, poll this on a schedule and store the
- * results (see the note on the speed monitor page).
+ * results.
+ *
+ * All live sites are fetched concurrently, so 193 locations take about as
+ * long as one.
  */
 class OmadaSpeedMonitor
 {
@@ -33,121 +37,144 @@ class OmadaSpeedMonitor
      */
     private function fetch(): array
     {
-        $client = app(OmadaOpenApiClient::class);
+        $config = config('omada');
 
-        if (! $client->isConfigured()) {
+        if (blank($config['client_id'] ?? null) || blank($config['client_secret'] ?? null) || blank($config['omadac_id'] ?? null) || blank($config['base_url'] ?? null)) {
             return [];
         }
 
-        // Only locations that have actually been reached by the controller.
-        // The other 150 are still being set up and would only slow the page down.
+        // All active sites, not just the ones that have been reached by the
+        // controller. A location with 44 clients but no portal handoff yet is
+        // exactly the one an operator wants to see.
         $sites = Site::query()
             ->where('status', RecordStatus::Active)
-            ->whereNotNull('portal_last_seen_at')
             ->orderBy('site_code')
             ->get();
+
+        if ($sites->isEmpty()) {
+            return [];
+        }
+
+        // Token first (one call), then fan out.
+        $http = Http::withOptions(['verify' => (bool) ($config['verify_tls'] ?? false), 'timeout' => 30])
+            ->withHeaders(['Content-Type' => 'application/json']);
+
+        $login = $http->post(rtrim((string) $config['base_url'], '/').'/authorize/token?grant_type=client_credentials', [
+            'omadacId' => $config['omadac_id'],
+            'client_id' => $config['client_id'],
+            'client_secret' => $config['client_secret'],
+        ]);
+
+        $token = $login->json('result.accessToken');
+
+        if (! is_string($token) || $token === '') {
+            return [];
+        }
+
+        $base = rtrim((string) $config['base_url'], '/');
+        $omadacId = $config['omadac_id'];
+
+        // One concurrent request per site. pageSize=100 captures every client
+        // for all but the largest locations in a single round trip.
+        $responses = Http::pool(function ($pool) use ($sites, $base, $omadacId, $token) {
+            $calls = [];
+
+            foreach ($sites as $site) {
+                if ($site->omada_site_id === null) {
+                    continue;
+                }
+
+                $calls[] = $pool->as((string) $site->id)
+                    ->withOptions(['verify' => (bool) (config('omada.verify_tls') ?? false), 'timeout' => 30])
+                    ->withHeaders(['Content-Type' => 'application/json', 'Authorization' => 'AccessToken='.$token])
+                    ->get($base."/v1/{$omadacId}/sites/{$site->omada_site_id}/clients?page=1&pageSize=100");
+            }
+
+            return $calls;
+        });
 
         $result = [];
 
         foreach ($sites as $site) {
-            $siteId = $site->omada_site_id;
-
-            if ($siteId === null) {
+            if ($site->omada_site_id === null) {
                 continue;
             }
 
-            $result[] = $this->siteSnapshot($site, $client, $siteId);
-        }
+            $response = $responses[(string) $site->id] ?? null;
 
-        return $result;
-    }
+            if ($response === null || ! $response->successful()) {
+                $result[] = [
+                    'site_code' => $site->site_code,
+                    'site_name' => $site->name,
+                    'province' => $site->province,
+                    'clients' => [],
+                    'client_count' => 0,
+                    'wireless_count' => 0,
+                    'wired_count' => 0,
+                    'rx_rate' => 0,
+                    'tx_rate' => 0,
+                    'error' => 'Could not read this location.',
+                ];
 
-    /**
-     * @return array<string, mixed>
-     */
-    private function siteSnapshot(Site $site, OmadaOpenApiClient $client, string $siteId): array
-    {
-        $clients = [];
-        $totalRx = 0; // download, Kbps
-        $totalTx = 0; // upload, Kbps
-        $wireless = 0;
-        $wired = 0;
-        $totalClients = 0;
+                continue;
+            }
 
-        try {
-            $page = 1;
-            $seen = 0;
-            $total = null;
+            $body = $response->json();
+            $rows = $body['result']['data'] ?? [];
+            $total = (int) ($body['result']['totalRows'] ?? count($rows));
 
-            do {
-                $result = $client->getClientsPage($siteId, $page, 100);
+            $rx = 0;
+            $tx = 0;
+            $wireless = 0;
+            $wired = 0;
+            $clients = [];
 
-                if ($total === null) {
-                    $total = (int) ($result['totalRows'] ?? 0);
+            foreach ($rows as $row) {
+                $isWireless = (bool) ($row['wireless'] ?? false);
+
+                if ($isWireless) {
+                    $wireless++;
+                    $rx += (int) ($row['rxRate'] ?? 0);
+                    $tx += (int) ($row['txRate'] ?? 0);
+                } else {
+                    $wired++;
                 }
 
-                foreach (($result['data'] ?? []) as $row) {
-                    $seen++;
-                    $isWireless = (bool) ($row['wireless'] ?? false);
+                $clients[] = [
+                    'mac' => (string) ($row['mac'] ?? ''),
+                    'name' => (string) ($row['name'] ?? $row['hostName'] ?? ''),
+                    'ssid' => (string) ($row['ssid'] ?? ''),
+                    'ap' => (string) ($row['apName'] ?? ''),
+                    'wireless' => $isWireless,
+                    'rxRate' => (int) ($row['rxRate'] ?? 0),
+                    'txRate' => (int) ($row['txRate'] ?? 0),
+                    'trafficDown' => (int) ($row['trafficDown'] ?? 0),
+                    'trafficUp' => (int) ($row['trafficUp'] ?? 0),
+                    'rssi' => isset($row['rssi']) ? (int) $row['rssi'] : null,
+                    'signal' => (int) ($row['signalRank'] ?? 0),
+                    'guest' => (bool) ($row['guest'] ?? false),
+                    'active' => (bool) ($row['active'] ?? false),
+                ];
+            }
 
-                    if ($isWireless) {
-                        $wireless++;
-                        $totalRx += (int) ($row['rxRate'] ?? 0);
-                        $totalTx += (int) ($row['txRate'] ?? 0);
-                    } else {
-                        $wired++;
-                    }
-
-                    $clients[] = [
-                        'mac' => (string) ($row['mac'] ?? ''),
-                        'name' => (string) ($row['name'] ?? $row['hostName'] ?? ''),
-                        'ssid' => (string) ($row['ssid'] ?? ''),
-                        'ap' => (string) ($row['apName'] ?? ''),
-                        'wireless' => $isWireless,
-                        'rxRate' => (int) ($row['rxRate'] ?? 0),
-                        'txRate' => (int) ($row['txRate'] ?? 0),
-                        'trafficDown' => (int) ($row['trafficDown'] ?? 0),
-                        'trafficUp' => (int) ($row['trafficUp'] ?? 0),
-                        'rssi' => isset($row['rssi']) ? (int) $row['rssi'] : null,
-                        'signal' => (int) ($row['signalRank'] ?? 0),
-                        'guest' => (bool) ($row['guest'] ?? false),
-                        'active' => (bool) ($row['active'] ?? false),
-                    ];
-                }
-
-                $page++;
-            } while ($total !== null && $seen < $total && $seen < 1000);
-
-            $totalClients = $total ?? 0;
-        } catch (\Throwable $e) {
-            // A site that refuses the query still shows up, with zero speed and
-            // the error noted. That is more honest than silently dropping it.
-            return [
+            $result[] = [
                 'site_code' => $site->site_code,
                 'site_name' => $site->name,
                 'province' => $site->province,
-                'clients' => [],
-                'client_count' => 0,
-                'wireless_count' => 0,
-                'wired_count' => 0,
-                'rx_rate' => 0,
-                'tx_rate' => 0,
-                'error' => $e->getMessage(),
+                'clients' => $clients,
+                'client_count' => $total,
+                'wireless_count' => $wireless,
+                'wired_count' => $wired,
+                'rx_rate' => $rx,
+                'tx_rate' => $tx,
+                'error' => null,
             ];
         }
 
-        return [
-            'site_code' => $site->site_code,
-            'site_name' => $site->name,
-            'province' => $site->province,
-            'clients' => $clients,
-            'client_count' => $totalClients,
-            'wireless_count' => $wireless,
-            'wired_count' => $wired,
-            'rx_rate' => $totalRx,
-            'tx_rate' => $totalTx,
-            'error' => null,
-        ];
+        // Sort by download speed, so the busy sites come first.
+        usort($result, fn (array $a, array $b): int => $b['rx_rate'] <=> $a['rx_rate']);
+
+        return $result;
     }
 
     /**
