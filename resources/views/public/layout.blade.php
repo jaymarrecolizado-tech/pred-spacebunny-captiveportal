@@ -53,7 +53,7 @@
     <footer class="border-t border-slate-200 bg-white">
         <div class="mx-auto flex w-full max-w-xl flex-col gap-1 px-4 py-4 text-[11px] text-slate-500 sm:flex-row sm:items-center sm:justify-between">
             <p>No name, phone number or account is collected.</p>
-            <p class="text-slate-400">DICT Free Wi-Fi for All</p>
+            <p class="text-slate-600">DICT Free Wi-Fi for All</p>
         </div>
     </footer>
 </body>
