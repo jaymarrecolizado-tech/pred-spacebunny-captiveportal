@@ -26,12 +26,21 @@
         $reason = $reasons[session('portalReason')] ?? $reasons['expired'];
     @endphp
 
-    <div class="rounded-xl border border-amber-200 bg-amber-50 p-6">
-        <h1 class="text-xl font-semibold text-amber-900">{{ $reason['title'] }}</h1>
-        <p class="mt-2 text-sm text-amber-900">
-            {{ $reason['body'] }}
-        </p>
-        <p class="mt-3 text-sm text-amber-900">
+    <div class="card">
+        <span aria-hidden="true"
+              class="grid h-11 w-11 place-items-center rounded-xl bg-amber-50 text-amber-600 ring-1 ring-amber-200">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5">
+                <path d="M12 8v5M12 16h.01"/>
+                <path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/>
+            </svg>
+        </span>
+
+        <h1 class="mt-3 text-xl font-semibold leading-tight tracking-tight text-amber-900">
+            {{ $reason['title'] }}
+        </h1>
+        <p class="mt-2 text-sm leading-relaxed text-amber-900/90">{{ $reason['body'] }}</p>
+        <p class="mt-3 border-t border-amber-200/70 pt-3 text-[13px] leading-relaxed text-amber-900/80">
             Your internet access is decided by the Wi-Fi gateway, not this page.
         </p>
     </div>

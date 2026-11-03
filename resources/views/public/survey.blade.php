@@ -3,21 +3,20 @@
 @section('title', $site->name.' — Free Wi-Fi Feedback')
 
 @section('content')
-    <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            {{ $site->name }}
-            @if ($site->municipality)
-                <span class="font-normal normal-case">, {{ $site->municipality }}</span>
-            @endif
+    <section class="card">
+        <p class="eyebrow">
+            {{ $site->name }}@if ($site->municipality) &middot; {{ $site->municipality }}@endif
         </p>
-        <h1 class="mt-1 text-xl font-semibold">How is the Wi-Fi working today?</h1>
-        <p class="mt-1 text-sm text-slate-600">
-            This takes about a minute. Your answers are anonymous.
+        <h1 class="mt-2 text-2xl font-semibold leading-tight tracking-tight text-balance">
+            How is the Wi-Fi working today?
+        </h1>
+        <p class="mt-2 text-sm leading-relaxed text-slate-600">
+            About a minute, and it helps us fix the slow spots. Your answers are anonymous.
         </p>
-    </div>
+    </section>
 
     @if ($errors->any())
-        <div role="alert" class="mt-4 rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-800">
+        <div role="alert" class="alert-error mt-4">
             <p class="font-semibold">Please check the form:</p>
             <ul class="mt-1 list-disc pl-5">
                 @foreach ($errors->all() as $error)
@@ -28,7 +27,7 @@
     @endif
 
     <form method="POST" action="{{ $postUrl ?? route('site.survey.store', ['siteCode' => $site->site_code]) }}"
-          class="survey-form mt-4 space-y-6">
+          class="survey-form mt-4 space-y-4">
         @csrf
         <input type="hidden" name="idempotency_key" value="{{ $idempotencyKey }}">
         {{-- Honeypot: hidden from people, tempting to bots. --}}
@@ -41,10 +40,13 @@
             @include('public.question', ['question' => $question])
         @endforeach
 
-        <button type="submit"
-                class="min-h-12 w-full rounded-lg bg-slate-900 px-4 py-3 text-base font-semibold text-white
-                       focus:ring-2 focus:ring-slate-900 focus:ring-offset-2">
-            Send feedback
-        </button>
+        {{-- Pinned to the bottom of the screen on a phone so the answer is never
+             a scroll away, and back to normal flow on a tablet or desktop. --}}
+        <div class="sticky bottom-0 z-10 -mx-4 mt-6 border-t border-slate-200 bg-slate-50/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+            <button type="submit" class="btn-primary">Send feedback</button>
+            <p class="mt-2 text-center text-[11px] text-slate-500 sm:hidden">
+                You can close this page after sending.
+            </p>
+        </div>
     </form>
 @endsection

@@ -11,32 +11,33 @@
 @endif
 
 @section('content')
-    <div class="rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+    <div class="card text-center">
         @if ($authorized)
-            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Thank you &mdash; connecting you</p>
-            <p class="mt-3 text-5xl font-bold tabular-nums" id="count" aria-live="polite">5</p>
-            <p class="mt-3 text-center" id="count-label">
+            <p class="eyebrow text-emerald-600">Thank you &mdash; connecting you</p>
+
+            <div class="mx-auto mt-4 grid h-24 w-24 place-items-center rounded-full bg-emerald-50 ring-1 ring-emerald-200">
+                <span class="text-4xl font-bold tabular-nums text-emerald-700" id="count" aria-live="polite">5</span>
+            </div>
+
+            <p class="mt-4 text-sm leading-relaxed text-slate-600" id="count-label">
                 @if ($successUrl)
-                    Taking you to {{ $successHost }}&hellip;
+                    Taking you to <strong class="font-semibold text-slate-800">{{ $successHost }}</strong>&hellip;
                 @else
                     Giving the Wi-Fi a moment to let you through&hellip;
                 @endif
             </p>
 
             <div class="mt-4 hidden" id="final">
-                <h1 class="text-center text-xl font-semibold">You should now be online</h1>
-                <p class="mt-2 text-center text-sm text-slate-600">
+                <h1 class="text-xl font-semibold tracking-tight">You should now be online</h1>
+                <p class="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-slate-600">
                     If nothing happens, close this window and open your browser &mdash;
                     your internet is already on.
                 </p>
             </div>
 
             @if ($successUrl)
-                <p class="mt-4 text-center">
-                    <a href="{{ $successUrl }}"
-                       class="inline-block min-h-12 rounded-lg bg-slate-900 px-6 py-3 text-base font-semibold text-white">
-                        Continue to {{ $successHost }}
-                    </a>
+                <p class="mt-5">
+                    <a href="{{ $successUrl }}" class="btn-primary">Continue to {{ $successHost }}</a>
                 </p>
             @endif
 
@@ -86,18 +87,28 @@
                 </script>
             @endif
         @else
-            <h1 class="text-xl font-semibold">Thank you</h1>
-            <p class="mt-2 text-sm text-slate-600">
-                Your feedback for {{ $site->name }} was recorded.
+            <span aria-hidden="true"
+                  class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                     stroke-linecap="round" stroke-linejoin="round" class="h-7 w-7">
+                    <path d="m5 12.5 4.5 4.5L19 7.5"/>
+                </svg>
+            </span>
+
+            <h1 class="mt-4 text-xl font-semibold tracking-tight">Thank you</h1>
+            <p class="mt-2 text-sm leading-relaxed text-slate-600">
+                Your feedback for <strong class="font-semibold text-slate-800">{{ $site->name }}</strong> was recorded.
             </p>
-            <p class="mt-3 text-sm text-slate-600">
+            <p class="mt-3 text-sm leading-relaxed text-slate-600">
                 We couldn't connect you automatically this time &mdash; please disconnect and
                 reconnect to the Wi-Fi, or ask staff for help.
             </p>
         @endif
 
         @if ($reference)
-            <p class="mt-3 text-xs text-slate-500">Reference: <span class="font-mono">{{ $reference }}</span></p>
+            <p class="mx-auto mt-4 inline-flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-[11px] text-slate-500 ring-1 ring-slate-200">
+                Reference <span class="font-mono text-slate-700">{{ $reference }}</span>
+            </p>
         @endif
     </div>
 @endsection

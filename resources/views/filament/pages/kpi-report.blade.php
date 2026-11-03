@@ -17,7 +17,7 @@
             heading="Filters"
             description="Narrow the figures below. Rates are calculated only from responses inside your scope."
         >
-            <div style="display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));">
+            <div style="display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(min(100%,11rem),1fr));">
                 <label style="display:block;">
                     <span class="fi-section-header-description" style="display:block;margin-bottom:.35rem;">From</span>
                     <x-filament::input.wrapper>
@@ -100,7 +100,7 @@
     {{-- Headline figures, colour coded. The colour is not decoration: a rating
          below 3 reads red and a positive rate reads green, so trouble is visible
          before the numbers are read. --}}
-    <div style="display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));margin-block:1.5rem;">
+    <div style="display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(min(100%,13rem),1fr));margin-block:1.5rem;">
         @php
             $rated = (int) ($totals['rated'] ?? 0);
             $avg = $totals['average_rating'] ?? null;
@@ -136,7 +136,7 @@
         $issueTotal = array_sum(array_column($byIssue, 'total'));
     @endphp
 
-    <div style="display:grid;gap:1.5rem;grid-template-columns:repeat(auto-fit,minmax(20rem,1fr));">
+    <div style="display:grid;gap:1.5rem;grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr));">
         {{-- Bar chart: responses per site. --}}
         <x-filament::section icon="heroicon-o-chart-bar" heading="Responses by location">
             @forelse ($siteRows as $i => $row)
@@ -204,7 +204,7 @@
          actually on the free Wi-Fi. "Did not answer" is shown as its own bar,
          because a chart that hides the people who skipped would read as if
          everybody had an opinion. --}}
-    <div style="display:grid;gap:1.5rem;grid-template-columns:repeat(auto-fit,minmax(20rem,1fr));margin-block:1.5rem;">
+    <div style="display:grid;gap:1.5rem;grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr));margin-block:1.5rem;">
         @foreach ([
             ['heading' => 'Who answered — gender', 'rows' => $byGender, 'colour' => '#2563eb'],
             ['heading' => 'Who answered — sector', 'rows' => $bySector, 'colour' => '#0891b2'],
@@ -274,7 +274,7 @@
 
     {{-- Verified vs unverified (FR-REP-006). --}}
     <x-filament::section icon="heroicon-o-shield-check" heading="Attribution" class="mb-6">
-        <div style="display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));">
+        <div style="display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(min(100%,14rem),1fr));">
             <div>
                 <x-filament::badge color="success" icon="heroicon-m-shield-check">Verified portal</x-filament::badge>
                 <div style="margin-top:.5rem;font-size:1.5rem;font-weight:700;">{{ $totals['verified'] ?? 0 }}</div>
@@ -298,7 +298,7 @@
         </div>
     </x-filament::section>
 
-    <div style="display:grid;gap:1.5rem;grid-template-columns:repeat(auto-fit,minmax(22rem,1fr));">
+    <div style="display:grid;gap:1.5rem;grid-template-columns:repeat(auto-fit,minmax(min(100%,22rem),1fr));">
         {{-- By site --}}
         <x-filament::section icon="heroicon-o-building-office-2" heading="By site" description="Ratings shown with their sample size.">
             <div style="overflow-x:auto;">
@@ -377,7 +377,7 @@
         </x-filament::section>
     </div>
 
-    <div style="display:grid;gap:1.5rem;grid-template-columns:repeat(auto-fit,minmax(22rem,1fr));margin-block:1.5rem;">
+    <div style="display:grid;gap:1.5rem;grid-template-columns:repeat(auto-fit,minmax(min(100%,22rem),1fr));margin-block:1.5rem;">
         {{-- Issues --}}
         <x-filament::section icon="heroicon-o-exclamation-triangle" heading="Issues reported">
             @forelse ($byIssue as $row)
