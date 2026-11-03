@@ -20,7 +20,7 @@ use Livewire\Attributes\On;
 class SiteThroughputTable extends TableWidget
 {
     /** Columns whose values are numbers, not words, when sorting. */
-    private const NUMERIC = ['client_count', 'wireless_count', 'wired_count', 'rx_rate', 'tx_rate'];
+    private const NUMERIC = ['client_count', 'wireless_count', 'wired_count', 'client_to_ap_total_kbps', 'ap_to_client_total_kbps'];
 
     protected int|string|array $columnSpan = 'full';
 
@@ -34,12 +34,12 @@ class SiteThroughputTable extends TableWidget
     public function table(Table $table): Table
     {
         return $table
-            ->heading('Throughput by location')
-            ->description('Every location your account can see. Click a column to sort; search to narrow the list.')
+            ->heading('Wireless link rate by location')
+            ->description('Current radio link rates, not measured internet throughput. Totals are the sum of every wireless client.')
             ->records(fn (?string $search, ?string $sortColumn, ?string $sortDirection, int|string $page, int|string $recordsPerPage): LengthAwarePaginator => $this->pages(
                 app(OmadaSpeedMonitor::class)->snapshot(),
                 $search,
-                $sortColumn ?? 'rx_rate',
+                $sortColumn ?? 'ap_to_client_total_kbps',
                 $sortDirection ?? 'desc',
                 $page,
                 $recordsPerPage,
@@ -74,14 +74,14 @@ class SiteThroughputTable extends TableWidget
                     ->alignEnd()
                     ->sortable()
                     ->toggleable(),
-                TextColumn::make('rx_rate')
-                    ->label('Download (Mbps)')
+                TextColumn::make('ap_to_client_total_kbps')
+                    ->label('AP → Device (Mbps)')
                     ->alignEnd()
                     ->weight('bold')
                     ->formatStateUsing(fn (int|string $state): string => number_format(((int) $state) / 1000, 1))
                     ->sortable(),
-                TextColumn::make('tx_rate')
-                    ->label('Upload (Mbps)')
+                TextColumn::make('client_to_ap_total_kbps')
+                    ->label('Device → AP (Mbps)')
                     ->alignEnd()
                     ->formatStateUsing(fn (int|string $state): string => number_format(((int) $state) / 1000, 1))
                     ->sortable(),
@@ -92,7 +92,7 @@ class SiteThroughputTable extends TableWidget
                     ->placeholder('Live')
                     ->toggleable(),
             ])
-            ->defaultSort('rx_rate', 'desc')
+            ->defaultSort('ap_to_client_total_kbps', 'desc')
             ->searchPlaceholder('Site code, name or province')
             ->paginated([10, 25, 50, 100])
             ->defaultPaginationPageOption(25)

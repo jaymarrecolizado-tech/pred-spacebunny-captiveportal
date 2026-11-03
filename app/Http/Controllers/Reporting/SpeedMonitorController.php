@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 /**
- * Downloads the current speed snapshot as a CSV.
+ * Downloads the current wireless link-rate snapshot as a CSV.
  */
 class SpeedMonitorController extends Controller
 {
@@ -17,7 +17,7 @@ class SpeedMonitorController extends Controller
         $snapshot = $monitor->snapshot();
         $lines = [];
 
-        $lines[] = ['Site', 'Name', 'Province', 'Clients', 'Wireless', 'Wired', 'Download (Mbps)', 'Upload (Mbps)'];
+        $lines[] = ['Site', 'Name', 'Province', 'Clients', 'Wireless', 'Wired', 'AP to Device link (Mbps)', 'Device to AP link (Mbps)'];
 
         foreach ($snapshot as $site) {
             $lines[] = [
@@ -27,14 +27,14 @@ class SpeedMonitorController extends Controller
                 $site['client_count'],
                 $site['wireless_count'],
                 $site['wired_count'],
-                round($site['rx_rate'] / 1000, 2),
-                round($site['tx_rate'] / 1000, 2),
+                round($site['ap_to_client_total_kbps'] / 1000, 2),
+                round($site['client_to_ap_total_kbps'] / 1000, 2),
             ];
         }
 
         // Per-client detail.
         $lines[] = [];
-        $lines[] = ['Site', 'Device', 'MAC', 'SSID', 'Access point', 'Download (Mbps)', 'Upload (Mbps)', 'Signal (dBm)', 'Signal rank'];
+        $lines[] = ['Site', 'Device', 'MAC', 'SSID', 'Access point', 'AP to Device link (Mbps)', 'Device to AP link (Mbps)', 'Signal (dBm)', 'Signal rank'];
 
         foreach ($snapshot as $site) {
             foreach ($site['clients'] as $client) {
@@ -48,8 +48,8 @@ class SpeedMonitorController extends Controller
                     $client['mac'],
                     $client['ssid'],
                     $client['ap'],
-                    round($client['rxRate'] / 1000, 2),
-                    round($client['txRate'] / 1000, 2),
+                    round($client['ap_to_client_kbps'] / 1000, 2),
+                    round($client['client_to_ap_kbps'] / 1000, 2),
                     $client['rssi'] ?? '',
                     $client['signal'],
                 ];
@@ -68,7 +68,7 @@ class SpeedMonitorController extends Controller
 
         return new Response($content, 200, [
             'Content-Type' => 'text/csv; charset=utf-8',
-            'Content-Disposition' => 'attachment; filename="speed-snapshot-'.now()->format('Y-m-d-His').'.csv"',
+            'Content-Disposition' => 'attachment; filename="wireless-link-snapshot-'.now()->format('Y-m-d-His').'.csv"',
         ]);
     }
 }

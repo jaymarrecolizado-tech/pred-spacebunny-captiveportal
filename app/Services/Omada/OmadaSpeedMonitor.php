@@ -8,12 +8,17 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
 /**
- * A live snapshot of how fast each location is right now.
+ * A live snapshot of each location's current wireless link rates.
  *
- * The controller exposes no historical speed data - only the current rate of
- * every connected client. So "monitoring" here is a snapshot refreshed on
- * demand, not a trend. To get trends, poll this on a schedule and store the
- * results.
+ * These numbers are NOT measured internet throughput and are not a speed test.
+ * They are the negotiated radio rates reported by every connected client:
+ *
+ * - AP -> Device is Omada's txRate (the access point transmitting to the device)
+ * - Device -> AP is Omada's rxRate (the access point receiving from the device)
+ *
+ * A snapshot is not a trend. To measure actual traffic, poll the cumulative
+ * trafficDown/trafficUp counters on a schedule and calculate the change over
+ * time; a single snapshot cannot show throughput.
  *
  * All live sites are fetched concurrently, so 193 locations take about as
  * long as one.
@@ -111,8 +116,8 @@ class OmadaSpeedMonitor
                     'client_count' => 0,
                     'wireless_count' => 0,
                     'wired_count' => 0,
-                    'rx_rate' => 0,
-                    'tx_rate' => 0,
+                    'client_to_ap_total_kbps' => 0,
+                    'ap_to_client_total_kbps' => 0,
                     'error' => 'Could not read this location.',
                 ];
 
@@ -123,8 +128,8 @@ class OmadaSpeedMonitor
             $rows = $body['result']['data'] ?? [];
             $total = (int) ($body['result']['totalRows'] ?? count($rows));
 
-            $rx = 0;
-            $tx = 0;
+            $clientToAp = 0;
+            $apToClient = 0;
             $wireless = 0;
             $wired = 0;
             $clients = [];
@@ -134,8 +139,8 @@ class OmadaSpeedMonitor
 
                 if ($isWireless) {
                     $wireless++;
-                    $rx += (int) ($row['rxRate'] ?? 0);
-                    $tx += (int) ($row['txRate'] ?? 0);
+                    $clientToAp += (int) ($row['rxRate'] ?? 0);
+                    $apToClient += (int) ($row['txRate'] ?? 0);
                 } else {
                     $wired++;
                 }
@@ -146,8 +151,8 @@ class OmadaSpeedMonitor
                     'ssid' => (string) ($row['ssid'] ?? ''),
                     'ap' => (string) ($row['apName'] ?? ''),
                     'wireless' => $isWireless,
-                    'rxRate' => (int) ($row['rxRate'] ?? 0),
-                    'txRate' => (int) ($row['txRate'] ?? 0),
+                    'client_to_ap_kbps' => (int) ($row['rxRate'] ?? 0),
+                    'ap_to_client_kbps' => (int) ($row['txRate'] ?? 0),
                     'trafficDown' => (int) ($row['trafficDown'] ?? 0),
                     'trafficUp' => (int) ($row['trafficUp'] ?? 0),
                     'rssi' => isset($row['rssi']) ? (int) $row['rssi'] : null,
@@ -165,14 +170,14 @@ class OmadaSpeedMonitor
                 'client_count' => $total,
                 'wireless_count' => $wireless,
                 'wired_count' => $wired,
-                'rx_rate' => $rx,
-                'tx_rate' => $tx,
+                'client_to_ap_total_kbps' => $clientToAp,
+                'ap_to_client_total_kbps' => $apToClient,
                 'error' => null,
             ];
         }
 
-        // Sort by download speed, so the busy sites come first.
-        usort($result, fn (array $a, array $b): int => $b['rx_rate'] <=> $a['rx_rate']);
+        // Put the strongest AP-to-client link rates first, not "traffic".
+        usort($result, fn (array $a, array $b): int => $b['ap_to_client_total_kbps'] <=> $a['ap_to_client_total_kbps']);
 
         return $result;
     }

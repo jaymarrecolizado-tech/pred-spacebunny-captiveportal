@@ -18,7 +18,7 @@ use Livewire\Attributes\On;
  */
 class ClientThroughputTable extends TableWidget
 {
-    private const NUMERIC = ['rxRate', 'txRate', 'rssi', 'signal'];
+    private const NUMERIC = ['ap_to_client_kbps', 'client_to_ap_kbps', 'rssi', 'signal'];
 
     protected int|string|array $columnSpan = 'full';
 
@@ -32,11 +32,11 @@ class ClientThroughputTable extends TableWidget
     {
         return $table
             ->heading('Wireless devices right now')
-            ->description('Current rate per device. Signal is the strength at the access point, in dBm.')
+            ->description('Current radio link rates, not measured internet throughput. AP → Device is data to the phone; Device → AP is the reverse.')
             ->records(fn (?string $search, ?string $sortColumn, ?string $sortDirection, int|string $page, int|string $recordsPerPage): LengthAwarePaginator => $this->pages(
                 $this->flatten(app(OmadaSpeedMonitor::class)->snapshot()),
                 $search,
-                $sortColumn ?? 'rxRate',
+                $sortColumn ?? 'ap_to_client_kbps',
                 $sortDirection ?? 'desc',
                 $page,
                 $recordsPerPage,
@@ -61,14 +61,14 @@ class ClientThroughputTable extends TableWidget
                     ->label('Access point')
                     ->placeholder('—')
                     ->toggleable(),
-                TextColumn::make('rxRate')
-                    ->label('Download (Mbps)')
+                TextColumn::make('ap_to_client_kbps')
+                    ->label('AP → Device (Mbps)')
                     ->alignEnd()
                     ->weight('bold')
                     ->formatStateUsing(fn (int|string $state): string => number_format(((int) $state) / 1000, 1))
                     ->sortable(),
-                TextColumn::make('txRate')
-                    ->label('Upload (Mbps)')
+                TextColumn::make('client_to_ap_kbps')
+                    ->label('Device → AP (Mbps)')
                     ->alignEnd()
                     ->formatStateUsing(fn (int|string $state): string => number_format(((int) $state) / 1000, 1))
                     ->sortable(),
@@ -103,7 +103,7 @@ class ClientThroughputTable extends TableWidget
                     })
                     ->toggleable(),
             ])
-            ->defaultSort('rxRate', 'desc')
+            ->defaultSort('ap_to_client_kbps', 'desc')
             ->searchPlaceholder('Device, SSID or site')
             ->paginated([10, 25, 50, 100])
             ->defaultPaginationPageOption(25)
@@ -136,8 +136,8 @@ class ClientThroughputTable extends TableWidget
                     'mac' => $client['mac'],
                     'ssid' => $client['ssid'],
                     'ap' => $client['ap'],
-                    'rxRate' => $client['rxRate'],
-                    'txRate' => $client['txRate'],
+                    'ap_to_client_kbps' => $client['ap_to_client_kbps'],
+                    'client_to_ap_kbps' => $client['client_to_ap_kbps'],
                     'rssi' => $client['rssi'],
                     'signal' => $client['signal'],
                 ];

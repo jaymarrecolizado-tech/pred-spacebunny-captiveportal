@@ -33,7 +33,7 @@ class SpeedMonitorPageTest extends TestCase
         ]));
     }
 
-    public function test_it_shows_throughput_in_mbps(): void
+    public function test_it_shows_link_rates_in_mbps(): void
     {
         $this->fakeSnapshot($this->sampleSnapshot());
 
@@ -88,8 +88,8 @@ class SpeedMonitorPageTest extends TestCase
                 'ssid' => 'DICT',
                 'ap' => 'AP-1',
                 'wireless' => true,
-                'rxRate' => 12500,
-                'txRate' => 2500,
+                'ap_to_client_kbps' => 12500,
+                'client_to_ap_kbps' => 2500,
                 'trafficDown' => 0,
                 'trafficUp' => 0,
                 'rssi' => -55,
@@ -100,8 +100,8 @@ class SpeedMonitorPageTest extends TestCase
             'client_count' => 1,
             'wireless_count' => 1,
             'wired_count' => 0,
-            'rx_rate' => 12500,
-            'tx_rate' => 2500,
+            'ap_to_client_total_kbps' => 12500,
+            'client_to_ap_total_kbps' => 2500,
             'error' => null,
         ], [
             'site_code' => 'BUSY-SITE',
@@ -111,8 +111,8 @@ class SpeedMonitorPageTest extends TestCase
             'client_count' => 40,
             'wireless_count' => 40,
             'wired_count' => 0,
-            'rx_rate' => 247000,
-            'tx_rate' => 9000,
+            'ap_to_client_total_kbps' => 247000,
+            'client_to_ap_total_kbps' => 9000,
             'error' => null,
         ]];
     }
