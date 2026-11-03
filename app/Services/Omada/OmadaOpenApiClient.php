@@ -76,6 +76,16 @@ class OmadaOpenApiClient
     }
 
     /**
+     * A page of clients for one site, with their current traffic rates.
+     *
+     * @return array<string, mixed>
+     */
+    public function getClientsPage(string $siteId, int $page = 1, int $pageSize = 100): array
+    {
+        return $this->get('/v1/'.$this->config['omadac_id'].'/sites/'.$siteId.'/clients?page='.$page.'&pageSize='.$pageSize);
+    }
+
+    /**
      * Perform a GET and unwrap the result envelope.
      *
      * Omada answers as {errorCode, msg, result: {...}}, so every caller works
