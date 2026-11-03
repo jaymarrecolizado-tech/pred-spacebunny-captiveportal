@@ -17,7 +17,7 @@ class SpeedMonitorController extends Controller
         $snapshot = $monitor->snapshot();
         $lines = [];
 
-        $lines[] = ['Site', 'Name', 'Province', 'Clients', 'Wireless', 'Wired', 'Download (Kbps)', 'Upload (Kbps)'];
+        $lines[] = ['Site', 'Name', 'Province', 'Clients', 'Wireless', 'Wired', 'Download (Mbps)', 'Upload (Mbps)'];
 
         foreach ($snapshot as $site) {
             $lines[] = [
@@ -27,14 +27,14 @@ class SpeedMonitorController extends Controller
                 $site['client_count'],
                 $site['wireless_count'],
                 $site['wired_count'],
-                $site['rx_rate'],
-                $site['tx_rate'],
+                round($site['rx_rate'] / 1000, 2),
+                round($site['tx_rate'] / 1000, 2),
             ];
         }
 
         // Per-client detail.
         $lines[] = [];
-        $lines[] = ['Site', 'Device', 'MAC', 'SSID', 'Access point', 'Download (Kbps)', 'Upload (Kbps)', 'Signal (dBm)', 'Signal rank'];
+        $lines[] = ['Site', 'Device', 'MAC', 'SSID', 'Access point', 'Download (Mbps)', 'Upload (Mbps)', 'Signal (dBm)', 'Signal rank'];
 
         foreach ($snapshot as $site) {
             foreach ($site['clients'] as $client) {
@@ -48,8 +48,8 @@ class SpeedMonitorController extends Controller
                     $client['mac'],
                     $client['ssid'],
                     $client['ap'],
-                    $client['rxRate'],
-                    $client['txRate'],
+                    round($client['rxRate'] / 1000, 2),
+                    round($client['txRate'] / 1000, 2),
                     $client['rssi'] ?? '',
                     $client['signal'],
                 ];
