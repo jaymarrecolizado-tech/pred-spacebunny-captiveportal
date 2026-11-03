@@ -3,16 +3,18 @@
 @section('title', 'Wi-Fi survey — '.$site->name)
 
 @section('content')
-    <div class="rounded-xl border border-blue-200 bg-blue-50 p-5">
-        <p class="text-xs font-semibold uppercase tracking-wide text-blue-800">Free Wi-Fi check-in</p>
-        <h1 class="mt-1 text-xl font-semibold">{{ $site->name }}</h1>
-        <p class="mt-1 text-sm text-blue-900">
-            You are connected to this site's Wi-Fi. Please answer one quick question so we can improve it.
+    <div class="rounded-2xl border border-brand-200 bg-brand-50 p-5">
+        <p class="eyebrow text-brand-700">Free Wi-Fi check-in</p>
+        <h1 class="mt-1.5 text-xl font-semibold leading-tight tracking-tight text-brand-900">
+            {{ $site->name }}
+        </h1>
+        <p class="mt-2 text-sm leading-relaxed text-brand-900/90">
+            You are connected to this site's Wi-Fi. One quick question helps us make it better.
         </p>
     </div>
 
     @if ($errors->any())
-        <div role="alert" class="mt-4 rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-800">
+        <div role="alert" class="alert-error mt-4">
             <ul class="list-disc pl-5">
                 @foreach ($errors->all() as $error)
                     <li>{{ $error }}</li>
@@ -22,7 +24,7 @@
     @endif
 
     <form method="POST" action="{{ route('portal.session.store', ['session' => $portalSession->id, 'token' => $token]) }}"
-          class="survey-form mt-4 space-y-6">
+          class="survey-form mt-4 space-y-4">
         @csrf
         <input type="hidden" name="idempotency_key" value="{{ $idempotencyKey }}">
 
@@ -30,9 +32,8 @@
             @include('public.question', ['question' => $question])
         @endforeach
 
-        <button type="submit"
-                class="min-h-12 w-full rounded-lg bg-slate-900 px-4 py-3 text-base font-semibold text-white focus:ring-2 focus:ring-slate-900 focus:ring-offset-2">
-            Submit and continue
-        </button>
+        <div class="sticky bottom-0 z-10 -mx-4 mt-6 border-t border-slate-200 bg-slate-50/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+            <button type="submit" class="btn-primary">Submit and continue</button>
+        </div>
     </form>
 @endsection

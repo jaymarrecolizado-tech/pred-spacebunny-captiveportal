@@ -11,6 +11,7 @@
     $describedBy = $key.'-help';
     $type = $question['type'] ?? null;
     $when = $question['show_when'] ?? null;
+    $required = $question['required'] ?? false;
 @endphp
 
 @if ($when)
@@ -28,68 +29,85 @@
     @endpush
 @endif
 
-<div class="{{ $when ? 'q-'.$key : '' }}">
+<div class="{{ $when ? 'q-'.$key : '' }} card">
     @if ($type === 'info')
-        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-            {{ $question['label'] ?? '' }}
+        <div class="flex gap-3 rounded-xl bg-brand-50 p-4 text-sm leading-relaxed text-brand-800 ring-1 ring-brand-100">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" class="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M12 11v5M12 8h.01"/>
+            </svg>
+            <p>{{ $question['label'] ?? '' }}</p>
         </div>
+
     @elseif ($type === 'rating')
         <fieldset aria-describedby="{{ $describedBy }}">
-            <legend class="text-base font-medium">
+            <legend class="field-legend">
                 {{ $question['label'] }}
-                @if ($question['required'] ?? false)
-                    <span class="text-red-700" aria-hidden="true">*</span>
+                @if ($required)
+                    <span class="text-red-600" aria-hidden="true">*</span><span class="sr-only"> (required)</span>
                 @endif
             </legend>
-            <p id="{{ $describedBy }}" class="mt-1 text-sm text-slate-600">{{ $question['help'] ?? '' }}</p>
+            <p id="{{ $describedBy }}" class="field-help">{{ $question['help'] ?? '' }}</p>
+
             @php $rMin = $question['min'] ?? 1; $rMax = $question['max'] ?? 5; @endphp
+
             <div class="star-rating mt-3">
                 @for ($i = $rMax; $i >= $rMin; $i--)
                     <input type="radio" id="{{ $key }}-{{ $i }}" name="answers[{{ $key }}]"
                            value="{{ $i }}" aria-label="{{ $i }} out of {{ $rMax }} stars"
                            @checked((string) $old === (string) $i)
-                           @if ($question['required'] ?? false) required @endif>
+                           @if ($required) required @endif>
                     <label for="{{ $key }}-{{ $i }}" title="{{ $i }} star{{ $i > 1 ? 's' : '' }}"
                            aria-hidden="true">★</label>
                 @endfor
             </div>
-            <p class="mt-1 text-xs text-slate-500">Tap a star: {{ $rMin }} = poor, {{ $rMax }} = excellent.</p>
+
+            <div class="mt-1 flex items-baseline justify-between text-[11px] font-medium text-slate-500">
+                <span>{{ $rMin }} &middot; Poor</span>
+                <span>{{ $rMax }} &middot; Excellent</span>
+            </div>
         </fieldset>
+
     @elseif ($type === 'single_choice')
         <fieldset aria-describedby="{{ $describedBy }}">
-            <legend class="text-base font-medium">
+            <legend class="field-legend">
                 {{ $question['label'] }}
-                @if ($question['required'] ?? false)
-                    <span class="text-red-700" aria-hidden="true">*</span>
+                @if ($required)
+                    <span class="text-red-600" aria-hidden="true">*</span><span class="sr-only"> (required)</span>
                 @endif
             </legend>
-            <p id="{{ $describedBy }}" class="mt-1 text-sm text-slate-600">{{ $question['help'] ?? '' }}</p>
-            <div class="mt-2 space-y-2">
+            <p id="{{ $describedBy }}" class="field-help">{{ $question['help'] ?? '' }}</p>
+
+            <div class="mt-3 space-y-2">
                 @foreach ($question['options'] ?? [] as $option)
-                    <label class="flex min-h-12 cursor-pointer items-center gap-3 rounded-lg border border-slate-300 bg-white px-4
-                                focus-within:ring-2 focus-within:ring-slate-900 focus-within:ring-offset-2
-                                {{ (string) $old === (string) $option['value'] ? 'border-slate-900' : '' }}">
-                        <input type="radio" name="answers[{{ $key }}]" value="{{ $option['value'] }}" class="h-5 w-5"
-                               @checked((string) $old === (string) $option['value'])> 
+                    <label class="choice">
+                        <input type="radio" name="answers[{{ $key }}]" value="{{ $option['value'] }}"
+                               class="h-5 w-5 shrink-0 accent-brand-700"
+                               @checked((string) $old === (string) $option['value'])>
                         <span>{{ $option['label'] }}</span>
                     </label>
                 @endforeach
             </div>
         </fieldset>
+
     @elseif ($type === 'short_text')
         <div>
-            <label for="{{ $key }}" class="block text-base font-medium">
+            <label for="{{ $key }}" class="field-legend">
                 {{ $question['label'] }}
-                @if ($question['required'] ?? false)
-                    <span class="text-red-700" aria-hidden="true">*</span>
+                @if ($required)
+                    <span class="text-red-600" aria-hidden="true">*</span><span class="sr-only"> (required)</span>
                 @endif
             </label>
-            <p id="{{ $describedBy }}" class="mt-1 text-sm text-slate-600">{{ $question['help'] ?? '' }}</p>
+            <p id="{{ $describedBy }}" class="field-help">{{ $question['help'] ?? '' }}</p>
+
             <textarea id="{{ $key }}" name="answers[{{ $key }}]" rows="3"
                       maxlength="{{ $question['max_length'] ?? 500 }}"
-                      class="mt-2 w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-slate-900 focus:ring-offset-2"
+                      class="mt-2 w-full resize-y rounded-xl border border-slate-200 bg-white p-3 text-[15px] leading-relaxed
+                             placeholder:text-slate-400 focus:border-brand-600 focus:outline-2 focus:outline-offset-0
+                             focus:outline-brand-600"
                       aria-describedby="{{ $describedBy }}">{{ $old }}</textarea>
-            <p class="mt-1 text-xs text-slate-500">Up to {{ $question['max_length'] ?? 500 }} characters.</p>
+            <p class="field-hint">Up to {{ $question['max_length'] ?? 500 }} characters. Written answers are read by DICT staff.</p>
         </div>
     @endif
 </div>
