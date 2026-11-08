@@ -56,7 +56,7 @@ class SitePerformancePage extends Page
             ];
         }
 
-        $cards = app(SiteHealth::class)->cards($user);
+        $cards = app(SiteHealth::class)->withActions(app(SiteHealth::class)->cards($user));
         $provinces = collect($cards)->pluck('site.province')->filter()->unique()->sort()->values()->all();
 
         if ($this->search !== '') {

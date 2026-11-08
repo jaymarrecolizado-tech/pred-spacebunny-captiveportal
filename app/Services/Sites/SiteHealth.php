@@ -3,6 +3,7 @@
 namespace App\Services\Sites;
 
 use App\Models\Site;
+use App\Models\SiteAction;
 use App\Models\SpeedSiteSample;
 use App\Models\SurveyResponse;
 use App\Models\User;
@@ -119,6 +120,43 @@ class SiteHealth
         }
 
         usort($cards, fn (array $a, array $b): int => $this->rank($a['health']) <=> $this->rank($b['health']) ?: $a['score'] <=> $b['score'] ?: strcmp($a['site']->site_code, $b['site']->site_code));
+
+        return $cards;
+    }
+
+    /**
+     * Attach operational action state to an already-calculated card array.
+     *
+     * @param  array<int, array<string, mixed>>  $cards
+     * @return array<int, array<string, mixed>>
+     */
+    public function withActions(array $cards): array
+    {
+        $siteIds = collect($cards)->map(fn (array $card): int => (int) $card['site']->id)->all();
+
+        if ($siteIds === []) {
+            return $cards;
+        }
+
+        $actions = SiteAction::query()
+            ->with('owner:id,name')
+            ->whereIn('site_id', $siteIds)
+            ->get()
+            ->keyBy('site_id');
+
+        foreach ($cards as &$card) {
+            $action = $actions->get((int) $card['site']->id);
+
+            $card['action'] = $action === null ? null : [
+                'id' => $action->id,
+                'owner' => $action->owner?->name,
+                'status' => $action->status->value,
+                'status_label' => $action->status->label(),
+                'due_date' => $action->due_date?->format('Y-m-d'),
+            ];
+        }
+
+        unset($card);
 
         return $cards;
     }

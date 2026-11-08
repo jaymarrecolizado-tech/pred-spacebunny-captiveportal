@@ -35,7 +35,7 @@ class ActionRequiredPage extends Page
     protected function getViewData(): array
     {
         $user = auth()->user();
-        $cards = $user === null ? [] : app(SiteHealth::class)->cards($user);
+        $cards = $user === null ? [] : app(SiteHealth::class)->withActions(app(SiteHealth::class)->cards($user));
 
         if ($this->search !== '') {
             $needle = mb_strtolower($this->search);
