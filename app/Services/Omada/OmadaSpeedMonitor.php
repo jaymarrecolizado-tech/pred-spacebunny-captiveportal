@@ -107,7 +107,7 @@ class OmadaSpeedMonitor
 
             $response = $responses[(string) $site->id] ?? null;
 
-            if ($response === null || ! $response->successful()) {
+            if (! $response instanceof \Illuminate\Http\Client\Response || ! $response->successful()) {
                 $result[] = [
                     'site_code' => $site->site_code,
                     'site_name' => $site->name,
