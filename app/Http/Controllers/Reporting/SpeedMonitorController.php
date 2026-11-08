@@ -17,7 +17,7 @@ class SpeedMonitorController extends Controller
         $snapshot = $monitor->snapshot();
         $lines = [];
 
-        $lines[] = ['Site', 'Name', 'Province', 'Clients', 'Wireless', 'Wired', 'AP to Device link (Mbps)', 'Device to AP link (Mbps)'];
+        $lines[] = ['Site', 'Name', 'Province', 'Clients', 'Wireless', 'Wired', 'Peak AP to Device link (Mbps)', 'Peak Device to AP link (Mbps)', 'Basic/low-rate devices'];
 
         foreach ($snapshot as $site) {
             $lines[] = [
@@ -27,8 +27,9 @@ class SpeedMonitorController extends Controller
                 $site['client_count'],
                 $site['wireless_count'],
                 $site['wired_count'],
-                round($site['ap_to_client_total_kbps'] / 1000, 2),
-                round($site['client_to_ap_total_kbps'] / 1000, 2),
+                round($site['ap_to_client_max_kbps'] / 1000, 2),
+                round($site['client_to_ap_max_kbps'] / 1000, 2),
+                $site['low_rate_wireless_count'] ?? 0,
             ];
         }
 

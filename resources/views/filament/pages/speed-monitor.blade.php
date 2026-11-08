@@ -16,8 +16,8 @@
             ['label' => 'Connected clients', 'value' => $clients, 'note' => 'Devices the controller can see', 'colour' => '#0891b2', 'fill' => '#ecfeff'],
             ['label' => 'Wireless', 'value' => $wireless, 'note' => 'Wireless link rates shown', 'colour' => '#7c3aed', 'fill' => '#f5f3ff'],
             ['label' => 'Wired', 'value' => $wired, 'note' => 'No per-client rate reported', 'colour' => '#64748b', 'fill' => '#f1f5f9'],
-            ['label' => 'AP → Device link', 'value' => number_format($apToClientMbps, 1).' Mbps', 'note' => 'Σ of every wireless client’s link rate', 'colour' => '#15803d', 'fill' => '#f0fdf4'],
-            ['label' => 'Device → AP link', 'value' => number_format($clientToApMbps, 1).' Mbps', 'note' => 'Σ of every wireless client’s link rate', 'colour' => '#b45309', 'fill' => '#fffbeb'],
+            ['label' => 'Peak AP → Device', 'value' => number_format($peakApToClientMbps, 1).' Mbps', 'note' => 'Best negotiated wireless link rate', 'colour' => '#15803d', 'fill' => '#f0fdf4'],
+            ['label' => 'Basic/low-rate devices', 'value' => $lowRateDevices, 'note' => 'Wireless clients at 12 Mbps or below', 'colour' => '#b45309', 'fill' => '#fffbeb'],
         ] as $tile)
             <div style="border:1px solid rgba(128,128,128,.22);border-left:4px solid {{ $tile['colour'] }};border-radius:.6rem;padding:.85rem 1rem;background:{{ $tile['fill'] }};">
                 <div style="font-size:.7rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;opacity:.7;">{{ $tile['label'] }}</div>
@@ -28,6 +28,44 @@
     </div>
 
     <x-filament::section
+        icon="heroicon-o-chart-bar-square"
+        heading="Actual traffic, last hour"
+        description="Measured from timed samples of cumulative traffic counters, not from current radio rates."
+        style="margin-top:1.25rem;"
+    >
+        @php
+            $actualDownload = $actualDownMb >= 1024
+                ? number_format($actualDownMb / 1024, 1).' GB'
+                : number_format($actualDownMb, 1).' MB';
+            $actualUpload = $actualUpMb >= 1024
+                ? number_format($actualUpMb / 1024, 1).' GB'
+                : number_format($actualUpMb, 1).' MB';
+            $average = $actualDownMbps === null
+                ? '—'
+                : number_format($actualDownMbps, 1).' Mbps';
+        @endphp
+
+        <div style="display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(min(100%,11rem),1fr));margin-bottom:1rem;">
+            @foreach ([
+                ['label' => 'Downloaded', 'value' => $actualDownload],
+                ['label' => 'Uploaded', 'value' => $actualUpload],
+                ['label' => 'Avg down per sampled site', 'value' => $average],
+                ['label' => 'Samples stored', 'value' => $sampledSites === 0 ? '0' : ($sampledSites.' sites')],
+            ] as $tile)
+                <div style="border:1px solid rgba(128,128,128,.22);border-radius:.6rem;padding:.85rem 1rem;">
+                    <div style="font-size:.7rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;opacity:.7;">{{ $tile['label'] }}</div>
+                    <div style="font-size:1.2rem;font-weight:700;line-height:1.2;color:#1d4ed8;font-variant-numeric:tabular-nums;">{{ $tile['value'] }}</div>
+                </div>
+            @endforeach
+        </div>
+
+        <p class="fi-section-header-description">
+            Last sample: {{ $lastSampleAt }}. Samples are collected by the server scheduler every five minutes.
+            Clients present in both samples are matched by a keyed MAC hash; new, missing, or counter-reset clients are excluded rather than counted as traffic.
+        </p>
+    </x-filament::section>
+
+    <x-filament::section
         icon="heroicon-o-information-circle"
         heading="How to read this page"
         description="Taken at {{ $refreshedAt }}, from the Wi-Fi controller. Refresh for a new snapshot."
@@ -35,9 +73,10 @@
     >
         <ul style="margin:0;padding-inline-start:1.25rem;display:grid;gap:.4rem;font-size:.85rem;line-height:1.5;">
             <li><strong>These are link rates, not actual traffic.</strong> The controller reports the radio rate currently negotiated with each client, in Kbps. It is not a speed-test result, not bytes transferred, and not proof of internet capacity.</li>
-            <li><strong>AP → Device means data to the device.</strong> Device → AP is data from the device to the Wi-Fi system. The totals add up every wireless client’s current link rate, so they describe radio capacity, not internet speed.</li>
-            <li><strong>Wired devices have no wireless rate.</strong> The controller does not report a per-client wireless radio rate for them, so they are counted but contribute nothing to the link-rate totals.</li>
-            <li><strong>This is a snapshot, not history.</strong> Nothing is recorded over time yet, so there is no “how was it yesterday?” A timed sample of cumulative counters would show actual traffic rather than negotiated rates.</li>
+            <li><strong>Peak means the highest negotiated radio rate.</strong> AP → Device is the best link to a client; Device → AP is the best link back. Basic/low-rate devices are wireless clients at 12 Mbps or below. None of these figures is measured internet throughput.</li>
+            <li><strong>Wired devices have no wireless rate.</strong> The controller does not report a per-client wireless radio rate for them, so they are counted but do not appear as wireless link-rate rows.</li>
+            <li><strong>Link rates are not traffic.</strong> The upper tables show the radio rate each client has negotiated right now. The “Actual traffic” section is measured from timed counter samples and is the only throughput figure on this page.</li>
+            <li><strong>First samples do not produce Mbps.</strong> The first sample establishes a baseline; later samples can calculate bytes transferred. A new or resetting client is not invented as traffic.</li>
             <li><strong>Refresh</strong> clears the one-minute cache, so pressing it twice within a minute is the same as pressing it once.</li>
         </ul>
     </x-filament::section>

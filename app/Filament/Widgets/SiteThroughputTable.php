@@ -20,7 +20,7 @@ use Livewire\Attributes\On;
 class SiteThroughputTable extends TableWidget
 {
     /** Columns whose values are numbers, not words, when sorting. */
-    private const NUMERIC = ['client_count', 'wireless_count', 'wired_count', 'client_to_ap_total_kbps', 'ap_to_client_total_kbps'];
+    private const NUMERIC = ['client_count', 'wireless_count', 'wired_count', 'ap_to_client_max_kbps', 'client_to_ap_max_kbps', 'low_rate_wireless_count'];
 
     protected int|string|array $columnSpan = 'full';
 
@@ -35,11 +35,11 @@ class SiteThroughputTable extends TableWidget
     {
         return $table
             ->heading('Wireless link rate by location')
-            ->description('Current radio link rates, not measured internet throughput. Totals are the sum of every wireless client.')
+            ->description('Peak negotiated radio link rate and low-rate devices. These are not measured internet throughput.')
             ->records(fn (?string $search, ?string $sortColumn, ?string $sortDirection, int|string $page, int|string $recordsPerPage): LengthAwarePaginator => $this->pages(
                 app(OmadaSpeedMonitor::class)->snapshot(),
                 $search,
-                $sortColumn ?? 'ap_to_client_total_kbps',
+                $sortColumn ?? 'ap_to_client_max_kbps',
                 $sortDirection ?? 'desc',
                 $page,
                 $recordsPerPage,
@@ -74,16 +74,20 @@ class SiteThroughputTable extends TableWidget
                     ->alignEnd()
                     ->sortable()
                     ->toggleable(),
-                TextColumn::make('ap_to_client_total_kbps')
-                    ->label('AP → Device (Mbps)')
+                TextColumn::make('ap_to_client_max_kbps')
+                    ->label('Peak AP → Device (Mbps)')
                     ->alignEnd()
                     ->weight('bold')
                     ->formatStateUsing(fn (int|string $state): string => number_format(((int) $state) / 1000, 1))
                     ->sortable(),
-                TextColumn::make('client_to_ap_total_kbps')
-                    ->label('Device → AP (Mbps)')
+                TextColumn::make('client_to_ap_max_kbps')
+                    ->label('Peak Device → AP (Mbps)')
                     ->alignEnd()
                     ->formatStateUsing(fn (int|string $state): string => number_format(((int) $state) / 1000, 1))
+                    ->sortable(),
+                TextColumn::make('low_rate_wireless_count')
+                    ->label('Basic/low-rate devices')
+                    ->alignEnd()
                     ->sortable(),
                 TextColumn::make('error')
                     ->label('Status')
@@ -92,7 +96,7 @@ class SiteThroughputTable extends TableWidget
                     ->placeholder('Live')
                     ->toggleable(),
             ])
-            ->defaultSort('ap_to_client_total_kbps', 'desc')
+            ->defaultSort('ap_to_client_max_kbps', 'desc')
             ->searchPlaceholder('Site code, name or province')
             ->paginated([10, 25, 50, 100])
             ->defaultPaginationPageOption(25)

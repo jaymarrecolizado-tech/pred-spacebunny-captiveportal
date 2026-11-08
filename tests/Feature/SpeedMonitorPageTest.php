@@ -100,8 +100,9 @@ class SpeedMonitorPageTest extends TestCase
             'client_count' => 1,
             'wireless_count' => 1,
             'wired_count' => 0,
-            'ap_to_client_total_kbps' => 12500,
-            'client_to_ap_total_kbps' => 2500,
+            'ap_to_client_max_kbps' => 12500,
+            'client_to_ap_max_kbps' => 2500,
+            'low_rate_wireless_count' => 1,
             'error' => null,
         ], [
             'site_code' => 'BUSY-SITE',
@@ -111,8 +112,9 @@ class SpeedMonitorPageTest extends TestCase
             'client_count' => 40,
             'wireless_count' => 40,
             'wired_count' => 0,
-            'ap_to_client_total_kbps' => 247000,
-            'client_to_ap_total_kbps' => 9000,
+            'ap_to_client_max_kbps' => 247000,
+            'client_to_ap_max_kbps' => 30000,
+            'low_rate_wireless_count' => 0,
             'error' => null,
         ]];
     }

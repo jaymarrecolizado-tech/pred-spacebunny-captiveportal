@@ -116,8 +116,9 @@ class OmadaSpeedMonitor
                     'client_count' => 0,
                     'wireless_count' => 0,
                     'wired_count' => 0,
-                    'client_to_ap_total_kbps' => 0,
-                    'ap_to_client_total_kbps' => 0,
+                    'ap_to_client_max_kbps' => 0,
+                    'client_to_ap_max_kbps' => 0,
+                    'low_rate_wireless_count' => 0,
                     'error' => 'Could not read this location.',
                 ];
 
@@ -128,8 +129,9 @@ class OmadaSpeedMonitor
             $rows = $body['result']['data'] ?? [];
             $total = (int) ($body['result']['totalRows'] ?? count($rows));
 
-            $clientToAp = 0;
-            $apToClient = 0;
+            $clientToApMax = 0;
+            $apToClientMax = 0;
+            $lowRate = 0;
             $wireless = 0;
             $wired = 0;
             $clients = [];
@@ -139,8 +141,16 @@ class OmadaSpeedMonitor
 
                 if ($isWireless) {
                     $wireless++;
-                    $clientToAp += (int) ($row['rxRate'] ?? 0);
-                    $apToClient += (int) ($row['txRate'] ?? 0);
+                    $clientToApRate = (int) ($row['rxRate'] ?? 0);
+                    $apToClientRate = (int) ($row['txRate'] ?? 0);
+                    $clientToApMax = max($clientToApMax, $clientToApRate);
+                    $apToClientMax = max($apToClientMax, $apToClientRate);
+
+                    // Wi-Fi basic rates top out around 12 Mbps. Anything at or below that
+                    // is a client that is probably too far away or too old.
+                    if ($clientToApRate <= 12000 || $apToClientRate <= 12000) {
+                        $lowRate++;
+                    }
                 } else {
                     $wired++;
                 }
@@ -170,14 +180,15 @@ class OmadaSpeedMonitor
                 'client_count' => $total,
                 'wireless_count' => $wireless,
                 'wired_count' => $wired,
-                'client_to_ap_total_kbps' => $clientToAp,
-                'ap_to_client_total_kbps' => $apToClient,
+                'ap_to_client_max_kbps' => $apToClientMax,
+                'client_to_ap_max_kbps' => $clientToApMax,
+                'low_rate_wireless_count' => $lowRate,
                 'error' => null,
             ];
         }
 
         // Put the strongest AP-to-client link rates first, not "traffic".
-        usort($result, fn (array $a, array $b): int => $b['ap_to_client_total_kbps'] <=> $a['ap_to_client_total_kbps']);
+        usort($result, fn (array $a, array $b): int => $b['ap_to_client_max_kbps'] <=> $a['ap_to_client_max_kbps']);
 
         return $result;
     }
