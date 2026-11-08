@@ -4,6 +4,7 @@ namespace App\Services\Omada;
 
 use App\Enums\RecordStatus;
 use App\Models\Site;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
@@ -107,7 +108,7 @@ class OmadaSpeedMonitor
 
             $response = $responses[(string) $site->id] ?? null;
 
-            if (! $response instanceof \Illuminate\Http\Client\Response || ! $response->successful()) {
+            if (! $response instanceof Response || ! $response->successful()) {
                 $result[] = [
                     'site_code' => $site->site_code,
                     'site_name' => $site->name,
