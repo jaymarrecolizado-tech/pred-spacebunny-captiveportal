@@ -59,7 +59,7 @@ class SampleSpeedRates extends Command
                     ->latest('captured_at')
                     ->first();
 
-                $intervalSeconds = $last ? max(1, $capturedAt->diffInSeconds($last->captured_at)) : null;
+                $intervalSeconds = $last ? max(1, (int) abs($capturedAt->diffInSeconds($last->captured_at))) : null;
                 $previousClients = $last
                     ? SpeedClientSample::where('site_id', $site->id)
                         ->where('captured_at', $last->captured_at)

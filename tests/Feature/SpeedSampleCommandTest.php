@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\SpeedClientSample;
 use App\Models\Site;
 use App\Models\SpeedSiteSample;
 use App\Models\Supplier;
@@ -67,6 +68,11 @@ class SpeedSampleCommandTest extends TestCase
         $this->assertSame(0, $first->matched_clients);
         $this->assertSame(2, $first->unmatched_clients);
 
+        // Make the baseline five minutes old so the command sees a realistic interval.
+        $capturedAt = now()->subMinutes(5);
+        SpeedSiteSample::where('site_id', $site->id)->update(['captured_at' => $capturedAt]);
+        SpeedClientSample::where('site_id', $site->id)->update(['captured_at' => $capturedAt]);
+
         $mock->rows = [[
             // A new device joined this interval. Its first counter cannot be
             // differentiated from earlier traffic, so it is deliberately ignored.
@@ -95,7 +101,9 @@ class SpeedSampleCommandTest extends TestCase
         $this->assertSame(200, $latest->delta_up_bytes);
         $this->assertSame(2, $latest->matched_clients);
         $this->assertSame(1, $latest->unmatched_clients);
+        $this->assertGreaterThanOrEqual(298, $latest->sample_interval_seconds);
+        $this->assertLessThanOrEqual(301, $latest->sample_interval_seconds);
         $this->assertNotNull($latest->down_mbps);
-        $this->assertGreaterThanOrEqual(0, $latest->down_mbps);
+        $this->assertGreaterThan(0, $latest->down_mbps);
     }
 }

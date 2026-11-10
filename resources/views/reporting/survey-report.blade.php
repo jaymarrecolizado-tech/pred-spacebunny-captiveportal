@@ -28,48 +28,71 @@
 
         body {
             margin: 0;
-            padding: 24px;
+            padding: 14px;
             font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            font-size: 11px;
-            line-height: 1.45;
+            font-size: 10px;
+            line-height: 1.28;
             color: var(--ink);
             background: #fff;
         }
 
-        h1 { font-size: 19px; margin: 0 0 2px; }
-        h2 { font-size: 13px; margin: 22px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
-        .sub { color: var(--muted); margin: 0 0 18px; }
+        h1 { font-size: 18px; margin: 0 0 2px; }
+        h2 { font-size: 12px; margin: 14px 0 6px; padding-bottom: 3px; border-bottom: 1px solid var(--line); }
+        .sub { color: var(--muted); margin: 0 0 10px; font-size: .85em; }
 
         /* Headline figures */
-        .tiles { display: flex; flex-wrap: wrap; gap: 8px; }
-        .tile { flex: 1 1 150px; border: 1px solid var(--line); padding: 8px 10px; }
-        .tile .label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-        .tile .value { font-size: 21px; font-weight: 700; line-height: 1.15; margin-top: 2px; }
-        .tile .note { font-size: 9.5px; color: var(--muted); margin-top: 2px; }
+        .tiles { display: flex; flex-wrap: wrap; gap: 6px; }
+        .tile { flex: 1 1 112px; border: 1px solid var(--line); padding: 5px 8px; }
+        .tile .label { font-size: 8.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+        .tile .value { font-size: 18px; font-weight: 700; line-height: 1.1; margin-top: 1px; }
+        .tile .note { font-size: 8.5px; color: var(--muted); margin-top: 1px; }
 
         table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid var(--line); padding: 4px 6px; text-align: left; vertical-align: top; }
-        th { background: var(--soft); font-size: 10px; text-transform: uppercase; letter-spacing: .03em; }
+        th, td { border: 1px solid var(--line); padding: 3px 5px; text-align: left; vertical-align: top; }
+        th { background: var(--soft); font-size: 9px; text-transform: uppercase; letter-spacing: .03em; }
         td.num, th.num { text-align: right; white-space: nowrap; }
 
-        .flag { display: inline-block; background: var(--flag-bg); color: var(--flag); font-size: 9px; padding: 0 4px; border-radius: 2px; }
+        .flag { display: inline-block; background: var(--flag-bg); color: var(--flag); font-size: 8.5px; padding: 0 4px; border-radius: 2px; }
         .muted { color: var(--muted); }
-        .small { font-size: 9.5px; }
+        .small { font-size: 8.5px; }
 
-        /* Two columns for the breakdown tables, but appendix rows stay full width */
-        .cols { display: flex; gap: 14px; }
+        /* Two columns, with the first taking a little more room for labels */
+        .cols { display: flex; gap: 9px; align-items: stretch; }
         .cols > * { flex: 1 1 0; min-width: 0; }
+        .cols .wide { flex: 1.16 1 0; }
+        .cols .narrow { flex: .84 1 0; }
 
+        .stack { display: grid; gap: 10px; }
+        /* Compact inline chart rows: enough room to read, but many more rows per page. */
+        .bar-row {
+            display: grid;
+            grid-template-columns: minmax(6rem, 9rem) 1fr auto;
+            align-items: center;
+            gap: .45rem;
+            margin-bottom: .22rem;
+        }
+        .bar-track { display: block; height: .48rem; overflow: hidden; border-radius: 999px; background: rgba(128,128,128,.18); }
+        .bar-fill { display: block; height: 100%; border-radius: 999px; }
+        .bar-label, .bar-value { font-size: .68rem; }
+        .bar-value { font-weight: 600; }
         /* Chart container. Kept white in print so the colours in the SVG and
            bars stay readable regardless of the browser's dark mode. */
         .chart-card {
             border: 1px solid var(--line);
             border-radius: 4px;
-            padding: 10px 12px;
+            padding: 6px 8px;
             background: #fff;
+            break-inside: avoid;
+            page-break-inside: avoid;
         }
 
-        .page { margin-bottom: 16px; }
+        .page { margin-bottom: 10px; }
+
+        .comment-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .35rem; }
+        .comment-card { border-left: 2px solid var(--line); padding: .3rem .45rem; background: #fff; overflow-wrap: anywhere; page-break-inside: avoid; break-inside: avoid; }
+        .comment-card .meta { font-size: .62rem; color: var(--muted); margin-bottom: .1rem; }
+        .comment-card .question { font-size: .62rem; font-weight: 600; margin-bottom: .08rem; }
+        .comment-card .body { font-size: .74rem; line-height: 1.25; }
 
         /* Screen-only helper; never printed */
         .toolbar { margin-bottom: 16px; display: flex; gap: 8px; align-items: center; }
@@ -79,11 +102,26 @@
         }
         .toolbar .hint { color: var(--muted); }
 
-        @page { size: A4; margin: 14mm 12mm; }
+        @page { size: A4 portrait; margin: 9mm 10mm; }
 
+        /* The appendix gets a landscape page so the nine columns remain readable
+           instead of wrapping into a narrow wall of text. */
+        @page appendix { size: A4 landscape; margin: 8mm 10mm; }
+        .appendix-page { page: appendix; }
+        .appendix-page th,
+        .appendix-page td { padding: 2px 4px; font-size: 7px; }
+        .appendix-page .small { font-size: 6.5px; }
         @media print {
-            body { padding: 0; font-size: 9.5px; }
+            body { padding: 0; font-size: 8.3px; line-height: 1.28; }
             .toolbar { display: none; }
+            h2 { margin-top: 12px; margin-bottom: 5px; }
+            .h2-tight { margin-top: 0; }
+            .sub { margin-bottom: 8px; }
+            .tiles { gap: 4px; }
+            .tile { flex-basis: 96px; padding: 4px 6px; }
+            .tile .label { font-size: 7.8px; }
+            .tile .value { font-size: 17px; }
+            .tile .note { font-size: 7.8px; }
 
             /* Repeat the column headings on every printed page */
             thead { display: table-header-group; }
@@ -210,18 +248,18 @@
     @endif
 </div>
 
-<div class="cols" style="margin-top:22px;">
+<div class="cols" style="margin-top:12px;">
     <div>
-        <h2 style="margin-top:0;">Responses by location</h2>
+        <h2 class="h2-tight">Responses by location</h2>
         <div class="chart-card">
             @forelse ($topSites as $i => $row)
                 @php $width = round($row['responses'] / $maxSite * 100, 1); @endphp
-                <div style="display:grid;grid-template-columns:minmax(5rem,7rem) 1fr auto;align-items:center;gap:.5rem;margin-bottom:.35rem;">
-                    <span style="font-size:.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $row['label'] }}</span>
-                    <span style="background:rgba(128,128,128,.18);border-radius:999px;height:.6rem;overflow:hidden;display:block;">
-                        <span style="display:block;width:{{ $width }}%;height:100%;border-radius:999px;background:{{ $palette[$i % 10] }};"></span>
+                <div class="bar-row">
+                    <span class="bar-label">{{ $row['label'] }}</span>
+                    <span class="bar-track">
+                        <span class="bar-fill" style="width:{{ $width }}%;background:{{ $palette[$i % 10] }};"></span>
                     </span>
-                    <span style="font-size:.72rem;font-weight:bold;">{{ $row['responses'] }}</span>
+                    <span class="bar-value">{{ $row['responses'] }}</span>
                 </div>
             @empty
                 <p class="muted" style="font-size:.8rem;">No responses for these filters.</p>
@@ -269,10 +307,10 @@
     </div>
 </div>
 
-<div class="cols" style="margin-top:22px;">
-    <div>
-        <h2 style="margin-top:0;">Who answered</h2>
-        <p class="muted" style="font-size:.75rem;margin:0 0 .5rem;">
+<div class="cols" style="margin-top:12px;">
+    <div class="wide">
+        <h2 class="h2-tight">Who answered</h2>
+        <p class="muted" style="font-size:.7rem;margin:0 0 .4rem;">
             Out of {{ $totals['responses'] ?? 0 }} response{{ ($totals['responses'] ?? 0) === 1 ? '' : 's' }}.
             Answers collected before these questions were added count as did not answer.
         </p>
@@ -284,19 +322,19 @@
             @php
                 $maxRow = max(1, max(array_column($block['rows'] ?: [['total' => 1]], 'total')));
             @endphp
-            <h3 style="font-size:.8rem;margin:.7rem 0 .35rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;">{{ $block['heading'] }}</h3>
+            <h3 style="font-size:.7rem;margin:.5rem 0 .25rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;">{{ $block['heading'] }}</h3>
             <div class="chart-card">
                 @forelse ($block['rows'] as $row)
                     @php
                         $width = round($row['total'] / $maxRow * 100, 1);
                         $isUnanswered = $row['value'] === '';
                     @endphp
-                    <div style="display:grid;grid-template-columns:minmax(5rem,7rem) 1fr auto;align-items:center;gap:.5rem;margin-bottom:.35rem;">
-                        <span style="font-size:.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ $row['label'] }}">{{ $row['label'] }}</span>
-                        <span style="background:rgba(128,128,128,.18);border-radius:999px;height:.6rem;overflow:hidden;display:block;">
-                            <span style="display:block;width:{{ $width }}%;height:100%;border-radius:999px;background:{{ $isUnanswered ? 'rgba(128,128,128,.55)' : $block['colour'] }};"></span>
+                    <div class="bar-row">
+                        <span class="bar-label" title="{{ $row['label'] }}">{{ $row['label'] }}</span>
+                        <span class="bar-track">
+                            <span class="bar-fill" style="width:{{ $width }}%;background:{{ $isUnanswered ? 'rgba(128,128,128,.55)' : $block['colour'] }};"></span>
                         </span>
-                        <span style="font-size:.72rem;font-weight:bold;">{{ $row['total'] }}</span>
+                        <span class="bar-value">{{ $row['total'] }}</span>
                     </div>
                 @empty
                     <p class="muted" style="font-size:.8rem;">No responses for these filters.</p>
@@ -305,47 +343,49 @@
         @endforeach
     </div>
 
-    <div>
-        <h2 style="margin-top:0;">By supplier</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Supplier</th>
-                    <th class="num">Responses</th>
-                    <th class="num">Avg (n)</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($bySupplier as $row)
+    <div class="narrow stack">
+        <div>
+            <h2 class="h2-tight">By supplier</h2>
+            <table>
+                <thead>
                     <tr>
-                        <td>{{ $row['label'] }}</td>
-                        <td class="num">{{ $row['responses'] }}</td>
-                        <td class="num">{{ $row['average_rating'] ?? '—' }} ({{ $row['rated'] }})</td>
+                        <th>Supplier</th>
+                        <th class="num">Responses</th>
+                        <th class="num">Avg (n)</th>
                     </tr>
-                @empty
-                    <tr><td colspan="3" class="muted">No responses.</td></tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
+                </thead>
+                <tbody>
+                    @forelse ($bySupplier as $row)
+                        <tr>
+                            <td>{{ $row['label'] }}</td>
+                            <td class="num">{{ $row['responses'] }}</td>
+                            <td class="num">{{ $row['average_rating'] ?? '—' }} ({{ $row['rated'] }})</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="3" class="muted">No responses.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
 
-    <div>
-        <h2 style="margin-top:0;">Issues reported</h2>
-        <table>
-            <thead>
-                <tr><th>Issue</th><th class="num">Count</th></tr>
-            </thead>
-            <tbody>
-                @forelse ($byIssue as $row)
-                    <tr>
-                        <td>{{ ucfirst(str_replace('_', ' ', $row['issue_category'])) }}</td>
-                        <td class="num">{{ $row['total'] }}</td>
-                    </tr>
-                @empty
-                    <tr><td colspan="2" class="muted">No responses.</td></tr>
-                @endforelse
-            </tbody>
-        </table>
+        <div>
+            <h2 class="h2-tight">Issues reported</h2>
+            <table>
+                <thead>
+                    <tr><th>Issue</th><th class="num">Count</th></tr>
+                </thead>
+                <tbody>
+                    @forelse ($byIssue as $row)
+                        <tr>
+                            <td>{{ ucfirst(str_replace('_', ' ', $row['issue_category'])) }}</td>
+                            <td class="num">{{ $row['total'] }}</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="2" class="muted">No responses.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 </div>{{-- /summary-block: page 1 ends here --}}
@@ -393,22 +433,25 @@
         These are the public's own words and have not been edited. Treat this page as sensitive.
     </p>
 
+    <div class="comment-grid">
     @foreach ($comments as $comment)
-        <div style="border-left:3px solid var(--line);padding:.35rem .7rem;margin-bottom:.6rem;page-break-inside:avoid;">
-            <div style="font-size:.72rem;color:var(--muted);margin-bottom:.15rem;">
+        <article class="comment-card">
+            <div class="meta">
                 {{ $comment['site_code'] }} &middot; {{ $comment['submitted_at'] }}
                 @if ($comment['rating'] !== '') &middot; {{ $comment['rating'] }}&star; @endif
             </div>
             @if ($comment['question'] !== '')
-                <div style="font-size:.72rem;font-weight:600;margin-bottom:.15rem;">{{ $comment['question'] }}</div>
+                <div class="question">{{ $comment['question'] }}</div>
             @endif
-            <div style="font-size:.85rem;">{{ $comment['comment'] }}</div>
-        </div>
+            <div class="body">{{ $comment['comment'] }}</div>
+        </article>
     @endforeach
+</div>
 @else
     <p class="muted" style="font-size:.8rem;">Nobody left a written comment for these filters.</p>
 @endif
 
+<div class="appendix-page">
 {{-- Appendix: every individual response as one continuous table; CSS breaks the pages --}}
 <h2>Appendix — individual responses</h2>
 
@@ -457,6 +500,7 @@
         @endforelse
     </tbody>
 </table>
+</div>
 
 <p class="small muted" style="margin-top:18px;">
     <strong>How to read this:</strong> a positive response is a rating of {{ $positiveThreshold }} or more out of 5.
