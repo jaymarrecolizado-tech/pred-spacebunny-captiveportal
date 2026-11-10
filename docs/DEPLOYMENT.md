@@ -1,9 +1,9 @@
 # Deployment — DICT Free Wi-Fi Customer Feedback Platform
 
-**Status of this document.** The release and rollback scripts it describes are  
-verified by a stubbed dry-run (`26/26` checks). The steps below that run *on the  
-server* have not been executed yet: the external reconnaissance in §2 was done  
-over the network, and the server-side facts marked **CONFIRM** still need to be  
+**Status of this document.** The release and rollback scripts it describes are
+verified by a stubbed dry-run (`26/26` checks). The steps below that run *on the
+server* have not been executed yet: the external reconnaissance in §2 was done
+over the network, and the server-side facts marked **CONFIRM** still need to be
 read off the box.
 
 ---
@@ -33,28 +33,28 @@ Checked over the network before touching anything:
 
 ### The one thing that will break the pilot
 
-The certificate is self-signed, and port 80 redirects to it. A phone that joins  
-the Free Wi-Fi and is handed the survey URL will get a **certificate warning**  
-and never see the survey — the failure looks like "the portal does nothing",  
-with no error on our side. This is the same silent failure mode the pilot gate  
-in `docs/PORTAL_CONTRACT.md` exists to catch, and it has to be fixed before any  
+The certificate is self-signed, and port 80 redirects to it. A phone that joins
+the Free Wi-Fi and is handed the survey URL will get a **certificate warning**
+and never see the survey — the failure looks like "the portal does nothing",
+with no error on our side. This is the same silent failure mode the pilot gate
+in `docs/PORTAL_CONTRACT.md` exists to catch, and it has to be fixed before any
 device testing.
 
 Two ways out, and the choice determines `PORTAL_PUBLIC_URL`:
 
-- **Recommended — issue a trusted certificate.** hPanel → SSL → Let's Encrypt.  
+- **Recommended — issue a trusted certificate.** hPanel → SSL → Let's Encrypt.
   Keep the HTTP → HTTPS redirect, set `PORTAL_PUBLIC_URL=https://<application-host>`.
-- **Or serve the portal over plain HTTP.** Remove the redirect (or exempt  
-  `/portal/*`) and set `PORTAL_PUBLIC_URL=http://<application-host>`.  
+- **Or serve the portal over plain HTTP.** Remove the redirect (or exempt
+  `/portal/*`) and set `PORTAL_PUBLIC_URL=http://<application-host>`.
   Acceptable for a closed pilot, not for production.
 
-Do not test on a phone against the self-signed certificate; it will produce a  
+Do not test on a phone against the self-signed certificate; it will produce a
 false negative and you will chase the wrong bug.
 
 ## 3. Reconnaissance before any change (**CONFIRM**)
 
-Plan.md Phase 2 §6.1 requires confirming the environment before touching it, and  
-requires that an unrelated application on this VPS is not disturbed. Run these  
+Plan.md Phase 2 §6.1 requires confirming the environment before touching it, and
+requires that an unrelated application on this VPS is not disturbed. Run these
 first and keep the output:
 
 ```bash
@@ -81,9 +81,9 @@ id; echo "$HOME"; ls -la ~/domains/ 2>/dev/null || ls -la ~
 mysql --version 2>/dev/null || mariadb --version 2>/dev/null
 ```
 
-Write the answers into this file. In particular, **do not** add a second nginx  
-vhost for a hostname that already has one — edit the existing server block, or  
-add a `server_name` to it. `deploy/nginx.conf.example` is a reference for the  
+Write the answers into this file. In particular, **do not** add a second nginx
+vhost for a hostname that already has one — edit the existing server block, or
+add a `server_name` to it. `deploy/nginx.conf.example` is a reference for the
 Laravel front-controller directives, not a file to drop into `sites-enabled`.
 
 Then check the pieces the app needs:
@@ -96,8 +96,8 @@ node --version && npm --version      # only needed if you build assets on the se
 
 ## 4. Layout
 
-Laravel is not served from a repository checkout. Each release is an immutable  
-directory and `current` is a symlink, so a deploy is atomic and a rollback is a  
+Laravel is not served from a repository checkout. Each release is an immutable
+directory and `current` is a symlink, so a deploy is atomic and a rollback is a
 symlink swap.
 
 ```
@@ -113,12 +113,12 @@ symlink swap.
 
 **CONFIRM** how the docroot is wired before choosing between these:
 
-- If hPanel lets you set the document root, point it at  
+- If hPanel lets you set the document root, point it at
   `/home/<deploy-user>/feedback/current/public`.
-- Otherwise make `public_html` a symlink to `current/public`:  
-  `ln -sfn ~/feedback/current/public ~/domains/<application-host>/public_html`  
-  and make sure the release script's `current` swap is reflected. A symlinked  
-  docroot is followed by nginx only if `disable_symlinks` is off (it is by  
+- Otherwise make `public_html` a symlink to `current/public`:
+  `ln -sfn ~/feedback/current/public ~/domains/<application-host>/public_html`
+  and make sure the release script's `current` swap is reflected. A symlinked
+  docroot is followed by nginx only if `disable_symlinks` is off (it is by
   default).
 
 ## 5. One-time server setup
@@ -137,7 +137,7 @@ chmod 640 "$APP_ROOT/shared/.env"
 php artisan key:generate --show     # run locally; paste into APP_KEY
 ```
 
-Fill in `APP_KEY`, `DB_*` and the two portal values. Then create the database  
+Fill in `APP_KEY`, `DB_*` and the two portal values. Then create the database
 and a least-privilege account — never use the MariaDB `root` user:
 
 ```sql
@@ -148,13 +148,13 @@ GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, INDEX, DROP, REFERENCES
 FLUSH PRIVILEGES;
 ```
 
-`CREATE`/`ALTER`/`INDEX`/`DROP` are needed for migrations. If your policy  
-forbids that, run migrations as a separate migration account and grant the  
+`CREATE`/`ALTER`/`INDEX`/`DROP` are needed for migrations. If your policy
+forbids that, run migrations as a separate migration account and grant the
 application account only `SELECT, INSERT, UPDATE, DELETE`.
 
 ## 6. Getting the code onto the server
 
-`release.sh` clones from a git remote. There is no remote configured yet, and a  
+`release.sh` clones from a git remote. There is no remote configured yet, and a
 bare repository on the VPS keeps the code off any third-party service:
 
 ```bash
@@ -168,7 +168,7 @@ git -C platform remote add vps <deploy-user>@<server-address>:repos/feedback.git
 git -C platform push vps main
 ```
 
-`release.sh` then uses `REPO_URL=~/repos/feedback.git` (an absolute path, not a  
+`release.sh` then uses `REPO_URL=~/repos/feedback.git` (an absolute path, not a
 URL). Push `main` before each release.
 
 ## 7. First release
@@ -182,7 +182,7 @@ PHP_FPM_SERVICE=php8.2-fpm \
   ~/feedback/current/deploy/release.sh
 ```
 
-On the very first run there is no `current`, so copy the script out of a  
+On the very first run there is no `current`, so copy the script out of a
 checkout first:
 
 ```bash
@@ -190,9 +190,9 @@ git clone --depth 1 --branch main ~/repos/feedback.git ~/feedback-tools
 APP_ROOT=~/feedback REPO_URL=~/repos/feedback.git ~/feedback-tools/deploy/release.sh
 ```
 
-The script refuses to run unless the environment is safe. It will stop on  
-`APP_ENV` not being `production`, `APP_DEBUG=true`, an empty `APP_KEY`, an empty  
-or loopback `PORTAL_PUBLIC_URL`, or `PORTAL_SIMULATOR_ENABLED=true`. Those checks  
+The script refuses to run unless the environment is safe. It will stop on
+`APP_ENV` not being `production`, `APP_DEBUG=true`, an empty `APP_KEY`, an empty
+or loopback `PORTAL_PUBLIC_URL`, or `PORTAL_SIMULATOR_ENABLED=true`. Those checks
 exist because each one is a way to publish a broken or exposed deployment.
 
 ## 8. Verify
@@ -209,7 +209,7 @@ curl -sSI https://<application-host>/portal/unavailable | head -1  # 200
 curl -sSI https://<application-host>/simulator | head -1 # 302/403/404, never 200
 ```
 
-Then confirm the handoff URL is on the public host, which is the check that  
+Then confirm the handoff URL is on the public host, which is the check that
 catches a misconfigured `PORTAL_PUBLIC_URL`:
 
 ```bash
@@ -227,10 +227,10 @@ deploy/rollback.sh               # previous release
 deploy/rollback.sh 20261014-090000
 ```
 
-**Rollback does not roll back the database.** Migrations run forward; pointing  
-`current` at older code leaves newer schema in place. The script lists any  
-migrations the live release has that the target does not, so you can judge  
-whether they were additive. A release that dropped a column cannot be rolled  
+**Rollback does not roll back the database.** Migrations run forward; pointing
+`current` at older code leaves newer schema in place. The script lists any
+migrations the live release has that the target does not, so you can judge
+whether they were additive. A release that dropped a column cannot be rolled
 back — roll forward with a fix instead.
 
 ## 10. What must never run in production
@@ -247,16 +247,16 @@ The first admin account is created through the panel, not a seeder.
 
 ## 11. Walled-garden requirements
 
-These are gateway-side and network-side, and no amount of application code  
+These are gateway-side and network-side, and no amount of application code
 compensates for them:
 
-1. **DNS**: captive clients must be able to resolve `<application-host>`  
-   *before* they are authenticated. If the gateway's DNS is restricted, add the  
+1. **DNS**: captive clients must be able to resolve `<application-host>`
+   *before* they are authenticated. If the gateway's DNS is restricted, add the
    record (or the IP) to the pre-authentication resolver.
-2. **Allow-list**: the gateway must permit outbound access to  
+2. **Allow-list**: the gateway must permit outbound access to
    `<server-address>:443` (or `:80`) for unauthenticated clients.
 3. **Certificate**: must be trusted by the client device — see §2.
-4. **No port 80 → 443 redirect for `/portal/*`** if you chose the plain-HTTP  
+4. **No port 80 → 443 redirect for `/portal/*`** if you chose the plain-HTTP
    route.
 
 ## 12. Backups

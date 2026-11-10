@@ -14,3 +14,10 @@ Schedule::command('omada:speed-sample')
     ->everyFiveMinutes()
     ->withoutOverlapping()
     ->onOneServer();
+
+// A local compressed dump with a 14-day retention window. It is not off-server
+// storage; add an external destination once one is approved.
+Schedule::command('db:backup')
+    ->dailyAt('02:30')
+    ->withoutOverlapping()
+    ->onOneServer();

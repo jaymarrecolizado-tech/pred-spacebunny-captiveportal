@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\SpeedClientSample;
 use App\Models\Site;
+use App\Models\SpeedClientSample;
 use App\Models\SpeedSiteSample;
 use App\Models\Supplier;
 use App\Services\Omada\OmadaSpeedMonitor;

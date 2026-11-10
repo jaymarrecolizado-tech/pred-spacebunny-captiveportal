@@ -81,11 +81,11 @@ class SiteHealth
                 $lowRate >= 1 => 12,
                 default => 20,
             };
+            $hasSurvey = ($responseForSite['responses'] ?? 0) > 0;
             $hasPortal = $site->portal_last_seen_at !== null;
-            $hasFeedbackOrLink = ($responseForSite['responses'] ?? 0) > 0 || $sample !== null;
 
             $health = match (true) {
-                ! $hasPortal && ! $hasFeedbackOrLink => 'nodata',
+                ! $hasSurvey && ! $hasPortal => 'nodata',
                 $sampleError !== null,
                 $average !== null && $average < 3.0,
                 $issueRate !== null && $issueRate > 40 => 'critical',

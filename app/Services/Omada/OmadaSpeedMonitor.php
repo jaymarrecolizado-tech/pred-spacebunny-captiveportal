@@ -80,24 +80,49 @@ class OmadaSpeedMonitor
         $base = rtrim((string) $config['base_url'], '/');
         $omadacId = $config['omadac_id'];
 
-        // One concurrent request per site. pageSize=100 captures every client
-        // for all but the largest locations in a single round trip.
+        // One concurrent request per site for page 1; larger sites fetch their
+        // remaining pages concurrently after the first response tells us the
+        // total row count.
         $responses = Http::pool(function ($pool) use ($sites, $base, $omadacId, $token) {
-            $calls = [];
+            return $this->clientPageRequests($pool, $sites, $base, $omadacId, $token, 1);
+        });
 
-            foreach ($sites as $site) {
-                if ($site->omada_site_id === null) {
-                    continue;
-                }
+        // Load later pages for sites with more than 100 clients.
+        $extraRequests = [];
 
-                $calls[] = $pool->as((string) $site->id)
-                    ->withOptions(['verify' => (bool) (config('omada.verify_tls') ?? false), 'timeout' => 30])
-                    ->withHeaders(['Content-Type' => 'application/json', 'Authorization' => 'AccessToken='.$token])
-                    ->get($base."/v1/{$omadacId}/sites/{$site->omada_site_id}/clients?page=1&pageSize=100");
+        foreach ($sites as $site) {
+            if ($site->omada_site_id === null) {
+                continue;
             }
 
-            return $calls;
-        });
+            $totalRows = (int) ($responses[(string) $site->id]?->json('result.totalRows') ?? 0);
+
+            for ($page = 2; $page <= (int) ceil($totalRows / 100); $page++) {
+                $extraRequests[] = [$site->id, $page];
+            }
+        }
+
+        $extraResponses = $extraRequests === []
+            ? []
+            : Http::pool(function ($pool) use ($extraRequests, $sites, $base, $omadacId, $token) {
+                $calls = [];
+                $sitesById = $sites->keyBy('id');
+
+                foreach ($extraRequests as [$siteId, $page]) {
+                    $site = $sitesById->get($siteId);
+
+                    if ($site === null) {
+                        continue;
+                    }
+
+                    $calls[] = $pool->as($siteId.'_'.$page)
+                        ->withOptions(['verify' => (bool) (config('omada.verify_tls') ?? false), 'timeout' => 30])
+                        ->withHeaders(['Content-Type' => 'application/json', 'Authorization' => 'AccessToken='.$token])
+                        ->get($base."/v1/{$omadacId}/sites/{$site->omada_site_id}/clients?page={$page}&pageSize=100");
+                }
+
+                return $calls;
+            });
 
         $result = [];
 
@@ -129,6 +154,30 @@ class OmadaSpeedMonitor
             $body = $response->json();
             $rows = $body['result']['data'] ?? [];
             $total = (int) ($body['result']['totalRows'] ?? count($rows));
+
+            for ($page = 2; $page <= (int) ceil($total / 100); $page++) {
+                $pageResponse = $extraResponses[$site->id.'_'.$page] ?? null;
+
+                if (! $pageResponse instanceof Response || ! $pageResponse->successful()) {
+                    $result[] = [
+                        'site_code' => $site->site_code,
+                        'site_name' => $site->name,
+                        'province' => $site->province,
+                        'clients' => [],
+                        'client_count' => 0,
+                        'wireless_count' => 0,
+                        'wired_count' => 0,
+                        'ap_to_client_max_kbps' => 0,
+                        'client_to_ap_max_kbps' => 0,
+                        'low_rate_wireless_count' => 0,
+                        'error' => 'Could not read all clients on this location.',
+                    ];
+
+                    continue 2;
+                }
+
+                $rows = array_merge($rows, $pageResponse->json('result.data') ?? []);
+            }
 
             $clientToApMax = 0;
             $apToClientMax = 0;
@@ -192,6 +241,30 @@ class OmadaSpeedMonitor
         usort($result, fn (array $a, array $b): int => $b['ap_to_client_max_kbps'] <=> $a['ap_to_client_max_kbps']);
 
         return $result;
+    }
+
+    /**
+     * Build the HTTP calls for one page of active clients for each site.
+     *
+     * @param  iterable<int, Site>  $sites
+     * @return array<int, mixed>
+     */
+    private function clientPageRequests(mixed $pool, iterable $sites, string $base, string $omadacId, string $token, int $page): array
+    {
+        $calls = [];
+
+        foreach ($sites as $site) {
+            if ($site->omada_site_id === null) {
+                continue;
+            }
+
+            $calls[] = $pool->as((string) $site->id)
+                ->withOptions(['verify' => (bool) (config('omada.verify_tls') ?? false), 'timeout' => 30])
+                ->withHeaders(['Content-Type' => 'application/json', 'Authorization' => 'AccessToken='.$token])
+                ->get($base."/v1/{$omadacId}/sites/{$site->omada_site_id}/clients?page={$page}&pageSize=100");
+        }
+
+        return $calls;
     }
 
     /**

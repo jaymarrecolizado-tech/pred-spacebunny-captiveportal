@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\PublicApiController;
 use App\Http\Controllers\Portal\OmadaAdapterController;
 use App\Http\Controllers\Portal\PortalSessionController;
 use App\Http\Controllers\PublicSurveyController;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::view('/', 'public.landing')->name('landing');
+Route::get('/health', [PublicApiController::class, 'health'])->name('health');
 
 Route::get('/feedback-unavailable', [PublicSurveyController::class, 'unavailable'])
     ->name('site.unavailable');
