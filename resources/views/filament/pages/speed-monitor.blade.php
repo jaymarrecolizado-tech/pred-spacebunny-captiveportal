@@ -12,9 +12,9 @@
 <x-filament-panels::page>
     <div style="display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(min(100%,11rem),1fr));">
         @foreach ([
-            ['label' => 'Locations', 'value' => $locations, 'note' => $reachable === $locations ? 'All reachable' : ($reachable.' of '.$locations.' reachable'), 'colour' => '#1d4ed8', 'fill' => '#eff6ff'],
-            ['label' => 'Connected clients', 'value' => $clients, 'note' => 'Devices the controller can see', 'colour' => '#0891b2', 'fill' => '#ecfeff'],
-            ['label' => 'Wireless', 'value' => $wireless, 'note' => 'Wireless link rates shown', 'colour' => '#7c3aed', 'fill' => '#f5f3ff'],
+            ['label' => 'Locations', 'value' => $locations, 'note' => $reachable === $locations ? 'All reachable' : ($reachable.' of '.$locations.' reachable'), 'colour' => '#144666', 'fill' => '#eef6fb'],
+            ['label' => 'Connected clients', 'value' => $clients, 'note' => 'Devices the controller can see', 'colour' => '#1f5f82', 'fill' => '#f3f7fb'],
+            ['label' => 'Wireless', 'value' => $wireless, 'note' => 'Wireless link rates shown', 'colour' => '#d9a437', 'fill' => '#f7f5ee'],
             ['label' => 'Wired', 'value' => $wired, 'note' => 'No per-client rate reported', 'colour' => '#64748b', 'fill' => '#f1f5f9'],
             ['label' => 'Peak AP → Device', 'value' => number_format($peakApToClientMbps, 1).' Mbps', 'note' => 'Best negotiated wireless link rate', 'colour' => '#15803d', 'fill' => '#f0fdf4'],
             ['label' => 'Basic/low-rate devices', 'value' => $lowRateDevices, 'note' => 'Wireless clients at 12 Mbps or below', 'colour' => '#b45309', 'fill' => '#fffbeb'],
@@ -54,7 +54,7 @@
             ] as $tile)
                 <div style="border:1px solid rgba(128,128,128,.22);border-radius:.6rem;padding:.85rem 1rem;">
                     <div style="font-size:.7rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;opacity:.7;">{{ $tile['label'] }}</div>
-                    <div style="font-size:1.2rem;font-weight:700;line-height:1.2;color:#1d4ed8;font-variant-numeric:tabular-nums;">{{ $tile['value'] }}</div>
+                    <div style="font-size:1.2rem;font-weight:700;line-height:1.2;color:#144666;font-variant-numeric:tabular-nums;">{{ $tile['value'] }}</div>
                 </div>
             @endforeach
         </div>

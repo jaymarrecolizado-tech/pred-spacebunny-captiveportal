@@ -210,7 +210,7 @@
 {{-- Charts on the summary page. Inline SVG and CSS bars only: no chart library,
      nothing to install, and vector shapes that stay crisp in the saved PDF. --}}
 @php
-    $palette = ['#2563eb', '#0891b2', '#7c3aed', '#c026d3', '#db2777', '#ea580c', '#ca8a04', '#65a30d', '#059669', '#0d9488'];
+    $palette = ['#144666', '#1f5f82', '#d9a437', '#64748b', '#557f9a', '#b45309', '#d9a437', '#256c61', '#144666', '#0c3446'];
     $ratingRows = $ratingDistribution ?? [];
     $ratingTotal = array_sum(array_column($ratingRows, 'total'));
     $maxRating = max(1, max(array_column($ratingRows, 'total') ?: [1]));

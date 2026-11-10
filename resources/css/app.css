@@ -12,11 +12,16 @@
     --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
         Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
 
-    --color-brand-50: #eff6ff;
-    --color-brand-100: #dbeafe;
-    --color-brand-600: #2563eb;
-    --color-brand-700: #1d4ed8;
-    --color-brand-800: #1e40af;
+    /* A modern government service palette: durable navy, warm signal gold,
+       and restrained neutral surfaces. The gold is used as a single accent,
+       never as a second competing brand colour. */
+    --color-brand-50: #eef6fb;
+    --color-brand-100: #dcecf5;
+    --color-brand-600: #1c5575;
+    --color-brand-700: #144666;
+    --color-brand-800: #103a53;
+    --color-brand-900: #0c2b3e;
+    --color-accent-500: #d9a437;
 }
 
 @layer base {
@@ -38,14 +43,20 @@
 @layer components {
     .card {
         @apply rounded-2xl border border-slate-200 bg-white p-5 shadow-sm;
+        box-shadow: 0 1px 2px rgba(12, 43, 62, .06), 0 8px 28px rgba(12, 43, 62, .055);
+    }
+
+    .card-elevated {
+        @apply rounded-2xl bg-white p-5 text-brand-900 shadow-lg;
+        box-shadow: 0 1px 2px rgba(12, 43, 62, .16), 0 18px 45px rgba(12, 43, 62, .22);
     }
 
     .eyebrow {
-        @apply text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500;
+        @apply text-[11px] font-bold uppercase tracking-[0.14em] text-brand-700;
     }
 
     .field-legend {
-        @apply block text-[15px] font-semibold leading-snug text-slate-900;
+        @apply block text-[15px] font-semibold leading-snug text-brand-900;
     }
 
     .field-help {
@@ -56,15 +67,20 @@
         @apply mt-1 text-[11px] text-slate-500;
     }
 
+    .info-panel {
+        @apply rounded-2xl border border-sky-100 bg-brand-50 p-4 text-[13px] leading-relaxed text-brand-800;
+    }
+
     /* One tappable row per option. The selected state is drawn with :has(), so
        it works with no JavaScript and no flash of unselected state. */
     .choice {
-        @apply flex min-h-[3.25rem] cursor-pointer items-center gap-3 rounded-xl border border-slate-200
-            bg-white px-4 py-3 text-[15px] leading-snug transition-colors;
+        @apply flex min-h-[3.5rem] cursor-pointer items-center gap-3 rounded-xl border border-slate-200
+            bg-white px-4 py-3 text-[15px] leading-snug transition-all;
     }
 
     .choice:hover {
-        @apply border-slate-300 bg-slate-50;
+        @apply border-brand-600 bg-brand-50/40;
+        transform: translateY(-1px);
     }
 
     .choice:has(input:checked) {
@@ -76,17 +92,30 @@
     }
 
     .btn-primary {
-        @apply inline-flex min-h-[3rem] w-full items-center justify-center gap-2 rounded-xl
-            bg-brand-700 px-5 py-3 text-base font-semibold text-white shadow-sm
-            transition-colors hover:bg-brand-800 active:scale-[0.99]
+        @apply inline-flex min-h-[3.25rem] w-full items-center justify-center gap-2 rounded-xl
+            bg-brand-800 px-5 py-3 text-base font-semibold text-white shadow-sm
+            transition-colors hover:bg-brand-900 active:scale-[0.99]
             focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700;
+        box-shadow: 0 3px 8px rgba(12, 43, 62, .24);
     }
 
     .btn-secondary {
-        @apply inline-flex min-h-[3rem] items-center justify-center gap-2 rounded-xl border
-            border-slate-300 bg-white px-5 py-3 text-base font-semibold text-slate-800
-            transition-colors hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2
-            focus-visible:outline-brand-700;
+        @apply inline-flex min-h-[3.25rem] items-center justify-center gap-2 rounded-xl border
+            border-slate-300 bg-white px-5 py-3 text-base font-semibold text-brand-900
+            transition-colors hover:border-brand-600 hover:bg-brand-50 focus-visible:outline-2
+            focus-visible:outline-offset-2 focus-visible:outline-brand-700;
+    }
+
+    .step-rail {
+        @apply flex items-center gap-2 text-[11px] font-semibold text-slate-500;
+    }
+
+    .step-rail-line {
+        @apply h-px flex-1 bg-slate-200;
+    }
+
+    .step-dot {
+        @apply grid h-6 w-6 place-items-center rounded-full bg-brand-800 text-[11px] font-bold text-white;
     }
 
     .alert-error {
@@ -109,16 +138,21 @@
     }
 
     .star-rating label {
-        @apply cursor-pointer select-none px-1 text-[2.6rem] leading-none text-slate-300 transition-colors;
+        @apply cursor-pointer select-none px-1 text-[2.75rem] leading-none text-slate-300 transition-colors;
     }
 
     .star-rating label:hover,
     .star-rating label:hover ~ label,
     .star-rating input:checked ~ label {
-        @apply text-amber-500;
+        color: #e0a72d;
     }
 
     .star-rating input:focus-visible + label {
-        @apply rounded-md text-amber-500 outline-2 outline-offset-2 outline-brand-700;
+        @apply rounded-md outline-2 outline-offset-2 outline-brand-700;
+        color: #e0a72d;
+    }
+
+    .result-mark {
+        @apply grid h-16 w-16 place-items-center rounded-full;
     }
 }

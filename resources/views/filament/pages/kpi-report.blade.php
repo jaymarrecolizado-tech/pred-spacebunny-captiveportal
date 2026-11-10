@@ -111,7 +111,7 @@
             $avgFill = $avg === null ? '#f1f5f9' : ($avg >= 4 ? '#f0fdf4' : ($avg >= 3 ? '#fffbeb' : '#fef2f2'));
 
             $tiles = [
-                ['label' => 'Total responses', 'value' => (int) ($totals['responses'] ?? 0), 'note' => 'All responses in scope for these filters.', 'colour' => '#1d4ed8', 'fill' => '#eff6ff'],
+                ['label' => 'Total responses', 'value' => (int) ($totals['responses'] ?? 0), 'note' => 'All responses in scope for these filters.', 'colour' => '#144666', 'fill' => '#eef6fb'],
                 ['label' => 'Average rating', 'value' => $avg, 'note' => $rated === 0 ? 'No rated responses yet.' : 'Out of 5, from '.$rated.' rated response'.($rated === 1 ? '' : 's').'.', 'colour' => $avgColour, 'fill' => $avgFill],
                 ['label' => 'Positive responses', 'value' => ($totals['positive_rate'] ?? null) === null ? null : $totals['positive_rate'].'%', 'note' => 'Rating of '.$positiveThreshold.' or more.', 'colour' => '#15803d', 'fill' => '#f0fdf4'],
                 ['label' => 'Connection issue rate', 'value' => $issueRate === null ? null : $issueRate.'%', 'note' => $issueRate === null ? 'Nothing to report yet.' : ($issueRate > 20 ? 'High — worth investigating.' : ($issueRate > 0 ? 'Some connections are failing.' : 'No connection problems reported.')), 'colour' => $issueRate === null ? '#64748b' : ($issueRate > 20 ? '#b91c1c' : '#b45309'), 'fill' => $issueRate === null ? '#f1f5f9' : '#fffbeb'],
@@ -132,7 +132,7 @@
     @php
         $siteRows = array_slice($bySite, 0, 10);
         $maxSiteResponses = max(1, max(array_column($siteRows ?: [['responses' => 1]], 'responses')));
-        $palette = ['#2563eb', '#0891b2', '#7c3aed', '#c026d3', '#db2777', '#ea580c', '#ca8a04', '#65a30d', '#059669', '#0d9488'];
+        $palette = ['#144666', '#1f5f82', '#d9a437', '#64748b', '#557f9a', '#b45309', '#d9a437', '#256c61', '#144666', '#0c3446'];
         $issueTotal = array_sum(array_column($byIssue, 'total'));
     @endphp
 
@@ -206,8 +206,8 @@
          everybody had an opinion. --}}
     <div style="display:grid;gap:1.5rem;grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr));margin-block:1.5rem;">
         @foreach ([
-            ['heading' => 'Who answered — gender', 'rows' => $byGender, 'colour' => '#2563eb'],
-            ['heading' => 'Who answered — sector', 'rows' => $bySector, 'colour' => '#0891b2'],
+            ['heading' => 'Who answered — gender', 'rows' => $byGender, 'colour' => '#144666'],
+            ['heading' => 'Who answered — sector', 'rows' => $bySector, 'colour' => '#1f5f82'],
         ] as $block)
             @php
                 $maxRow = max(1, max(array_column($block['rows'] ?: [['total' => 1]], 'total')));
