@@ -47,6 +47,7 @@ class VersionsRelationManager extends RelationManager
                             ->options([
                                 'rating' => 'Rating scale',
                                 'single_choice' => 'Single choice',
+                                'dropdown' => 'Dropdown (single choice list)',
                                 'short_text' => 'Short text (optional)',
                                 'info' => 'Information / privacy notice',
                             ])
@@ -66,7 +67,7 @@ class VersionsRelationManager extends RelationManager
                                 TextInput::make('label')->required()->maxLength(255),
                             ])
                             ->columns(2)
-                            ->visible(fn ($get) => $get('type') === 'single_choice'),
+                            ->visible(fn ($get) => in_array($get('type'), ['single_choice', 'dropdown'], true)),
 
                         Toggle::make('reports_as_issue_category')
                             ->label('Counts as issue category in reports')
@@ -74,7 +75,7 @@ class VersionsRelationManager extends RelationManager
 
                         TextInput::make('max_length')
                             ->numeric()
-                            ->default(500)
+                            ->default(240)
                             ->visible(fn ($get) => $get('type') === 'short_text'),
                     ])
                     ->columns(2)

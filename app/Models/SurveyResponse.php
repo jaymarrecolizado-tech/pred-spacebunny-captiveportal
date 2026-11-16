@@ -47,6 +47,7 @@ class SurveyResponse extends Model
         'issue_category',
         'gender',
         'sector',
+        'feedback',
         'submitted_at',
         'created_at',
     ];

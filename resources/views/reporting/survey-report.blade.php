@@ -318,6 +318,7 @@
         @foreach ([
             ['heading' => 'Gender', 'rows' => $byGender, 'colour' => $palette[0]],
             ['heading' => 'Sector', 'rows' => $bySector, 'colour' => $palette[1]],
+            ['heading' => 'Overall experience', 'rows' => $byFeedback ?? [], 'colour' => $palette[2]],
         ] as $block)
             @php
                 $maxRow = max(1, max(array_column($block['rows'] ?: [['total' => 1]], 'total')));
@@ -434,19 +435,24 @@
     </p>
 
     <div class="comment-grid">
-    @foreach ($comments as $comment)
-        <article class="comment-card">
-            <div class="meta">
-                {{ $comment['site_code'] }} &middot; {{ $comment['submitted_at'] }}
-                @if ($comment['rating'] !== '') &middot; {{ $comment['rating'] }}&star; @endif
-            </div>
-            @if ($comment['question'] !== '')
-                <div class="question">{{ $comment['question'] }}</div>
-            @endif
-            <div class="body">{{ $comment['comment'] }}</div>
-        </article>
-    @endforeach
-</div>
+        @foreach ($comments as $comment)
+            @php
+                // One very long answer must not be able to blow up the printed
+                // page. The full text stays in the CSV/spreadsheet/XML export.
+                $text = \Illuminate\Support\Str::limit($comment['comment'], 300);
+            @endphp
+            <article class="comment-card">
+                <div class="meta">
+                    {{ $comment['site_code'] }} &middot; {{ $comment['submitted_at'] }}
+                    @if ($comment['rating'] !== '') &middot; {{ $comment['rating'] }}&star; @endif
+                </div>
+                @if ($comment['question'] !== '')
+                    <div class="question">{{ $comment['question'] }}</div>
+                @endif
+                <div class="body">{{ $text }}</div>
+            </article>
+        @endforeach
+    </div>
 @else
     <p class="muted" style="font-size:.8rem;">Nobody left a written comment for these filters.</p>
 @endif

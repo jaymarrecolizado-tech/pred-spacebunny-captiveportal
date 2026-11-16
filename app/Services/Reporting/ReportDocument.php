@@ -6,6 +6,7 @@ use App\Models\SurveyResponse;
 use App\Models\SurveyVersion;
 use App\Models\User;
 use App\Services\Surveys\DemographicQuestions;
+use App\Services\Surveys\FeedbackQuestions;
 use Illuminate\Support\Collection;
 
 /**
@@ -65,6 +66,8 @@ class ReportDocument
             // Who answered, for the same reason.
             'by_gender' => $summary['by_gender'],
             'by_sector' => $summary['by_sector'],
+            // How people felt about the service overall.
+            'by_feedback' => $summary['by_feedback'],
             // Comments grouped by location.
             'comments_by_site' => $summary['comments_by_site'],
 
@@ -206,7 +209,7 @@ class ReportDocument
     {
         return [
             'reference', 'submitted_at', 'site_code', 'site_name', 'municipality', 'province',
-            'supplier', 'survey_version', 'rating', 'issue', 'attribution', 'gender', 'sector',
+            'supplier', 'survey_version', 'rating', 'issue', 'feedback', 'attribution', 'gender', 'sector',
         ];
     }
 
@@ -228,6 +231,7 @@ class ReportDocument
             'survey_version' => $response->surveyVersion?->version_number,
             'rating' => $response->overall_rating,
             'issue' => $response->issue_category,
+            'feedback' => FeedbackQuestions::label($response->feedback),
             'attribution' => $response->attribution_method->label(),
             'gender' => DemographicQuestions::label('gender', $response->gender),
             'sector' => DemographicQuestions::label('sector', $response->sector),

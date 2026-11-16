@@ -8,6 +8,7 @@ use App\Models\SurveyResponse;
 use App\Models\SurveyVersion;
 use App\Models\User;
 use App\Services\Surveys\DemographicQuestions;
+use App\Services\Surveys\FeedbackQuestions;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -98,6 +99,8 @@ class KpiReport
             // Wi-Fi, and which sectors DICT is reaching.
             'by_gender' => $this->demographicBreakdown($base, 'gender', $responses),
             'by_sector' => $this->demographicBreakdown($base, 'sector', $responses),
+            // How people felt about the service overall, from the dropdown.
+            'by_feedback' => $this->demographicBreakdown($base, 'feedback', $responses),
             // Written answers, grouped by location so the reader can see where
             // the words came from without reading the whole appendix.
             'comments_by_site' => $this->commentsBySite($base, $responses),
@@ -151,7 +154,12 @@ class KpiReport
             ->groupBy($column)
             ->pluck('total', 'value');
 
-        $labels = DemographicQuestions::optionLabels()[$column] ?? [];
+        // Labels come from whichever service defines the question that reports
+        // into this column: demographics or the experience dropdown.
+        $labels = array_merge(
+            DemographicQuestions::optionLabels()[$column] ?? [],
+            FeedbackQuestions::optionLabels()[$column] ?? [],
+        );
 
         // Every option is listed, even the ones nobody chose, so the chart has
         // a stable shape and "nobody is a farmer" stays visible as a finding

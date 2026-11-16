@@ -6,6 +6,7 @@ use App\Enums\AttributionMethod;
 use App\Models\SurveyResponse;
 use App\Models\User;
 use App\Services\Surveys\DemographicQuestions;
+use App\Services\Surveys\FeedbackQuestions;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -32,6 +33,14 @@ class SurveyResponsesTable
                 TextColumn::make('supplier.name')->label('Supplier')->toggleable(),
                 TextColumn::make('overall_rating')->label('Rating')->placeholder('—')->sortable(),
                 TextColumn::make('issue_category')->label('Issue')->toggleable(),
+                // The experience dropdown, stored in its own column so it can
+                // be filtered and counted without reading the answers blob.
+                TextColumn::make('feedback')
+                    ->label('Experience')
+                    ->formatStateUsing(fn (?string $state) => FeedbackQuestions::label($state) ?? '—')
+                    ->placeholder('—')
+                    ->toggleable()
+                    ->sortable(),
                 // Gender and sector, as the person answered them, not as the
                 // survey stored them.
                 TextColumn::make('gender')

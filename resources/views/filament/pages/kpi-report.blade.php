@@ -208,6 +208,7 @@
         @foreach ([
             ['heading' => 'Who answered — gender', 'rows' => $byGender, 'colour' => '#144666'],
             ['heading' => 'Who answered — sector', 'rows' => $bySector, 'colour' => '#1f5f82'],
+            ['heading' => 'Overall experience', 'rows' => $byFeedback ?? [], 'colour' => '#d9a437'],
         ] as $block)
             @php
                 $maxRow = max(1, max(array_column($block['rows'] ?: [['total' => 1]], 'total')));

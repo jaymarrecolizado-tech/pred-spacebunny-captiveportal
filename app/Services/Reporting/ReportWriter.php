@@ -139,6 +139,7 @@ class ReportWriter
         foreach ([
             ['GENDER (chart data)', $document['by_gender']],
             ['SECTOR (chart data)', $document['by_sector']],
+            ['FEEDBACK (chart data)', $document['by_feedback']],
         ] as [$heading, $rows]) {
             $line([]);
             $line([$heading]);
@@ -267,6 +268,7 @@ class ReportWriter
         foreach ([
             ['Gender', $document['by_gender']],
             ['Sector', $document['by_sector']],
+            ['Overall experience', $document['by_feedback']],
         ] as [$heading, $rows]) {
             $row([]);
             $row([$heading, 'Responses', 'Share of all responses']);
@@ -453,6 +455,7 @@ class ReportWriter
         foreach ([
             ['gender', $document['by_gender']],
             ['sector', $document['by_sector']],
+            ['feedback', $document['by_feedback']],
         ] as [$name, $rows]) {
             $group = $dom->createElement($name);
 

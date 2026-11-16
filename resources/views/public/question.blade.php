@@ -12,9 +12,23 @@
     $type = $question['type'] ?? null;
     $when = $question['show_when'] ?? null;
     $required = $question['required'] ?? false;
+
+    // The parent question decides how the follow-up is revealed. A radio
+    // parent can be handled with CSS alone; a dropdown needs a small script,
+    // because CSS cannot read the value of a <select>.
+    $parentType = null;
+
+    foreach (($allQuestions ?? []) as $candidate) {
+        if (($candidate['key'] ?? null) === ($when['question'] ?? null)) {
+            $parentType = $candidate['type'] ?? null;
+            break;
+        }
+    }
+
+    $parentIsDropdown = $parentType === 'dropdown';
 @endphp
 
-@if ($when)
+@if ($when && ! $parentIsDropdown)
     @push('head')
         <style>
             /* CSS only. A captive portal phone can be slow or old, and a form
@@ -29,7 +43,8 @@
     @endpush
 @endif
 
-<div class="{{ $when ? 'q-'.$key : '' }} card">
+<div class="{{ $when ? 'q-'.$key : '' }} card"
+     @if ($when) data-follows="{{ $when['question'] }}" data-follows-value="{{ $when['value'] }}" @endif>
     @if ($type === 'info')
         <div class="flex gap-3 rounded-xl bg-brand-50 p-4 text-sm leading-relaxed text-brand-800 ring-1 ring-brand-100">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -91,6 +106,28 @@
             </div>
         </fieldset>
 
+    @elseif ($type === 'dropdown')
+        <div>
+            <label for="{{ $key }}" class="field-legend">
+                {{ $question['label'] }}
+                @if ($required)
+                    <span class="text-red-600" aria-hidden="true">*</span><span class="sr-only"> (required)</span>
+                @endif
+            </label>
+            <p id="{{ $describedBy }}" class="field-help">{{ $question['help'] ?? '' }}</p>
+
+            <select id="{{ $key }}" name="answers[{{ $key }}]"
+                    class="mt-2 w-full min-h-[3rem] rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-[15px]
+                           focus:border-brand-600 focus:outline-2 focus:outline-offset-0 focus:outline-brand-600"
+                    aria-describedby="{{ $describedBy }}"
+                    @if ($required) required @endif>
+                <option value="">Choose one…</option>
+                @foreach ($question['options'] ?? [] as $option)
+                    <option value="{{ $option['value'] }}" @selected((string) $old === (string) $option['value'])>{{ $option['label'] }}</option>
+                @endforeach
+            </select>
+        </div>
+
     @elseif ($type === 'short_text')
         <div>
             <label for="{{ $key }}" class="field-legend">
@@ -102,12 +139,18 @@
             <p id="{{ $describedBy }}" class="field-help">{{ $question['help'] ?? '' }}</p>
 
             <textarea id="{{ $key }}" name="answers[{{ $key }}]" rows="3"
-                      maxlength="{{ $question['max_length'] ?? 500 }}"
+                      maxlength="{{ $question['max_length'] ?? 240 }}"
+                      data-counter="{{ $key }}-count"
                       class="mt-2 w-full resize-y rounded-xl border border-slate-200 bg-white p-3 text-[15px] leading-relaxed
                              placeholder:text-slate-400 focus:border-brand-600 focus:outline-2 focus:outline-offset-0
                              focus:outline-brand-600"
                       aria-describedby="{{ $describedBy }}">{{ $old }}</textarea>
-            <p class="field-hint">Up to {{ $question['max_length'] ?? 500 }} characters. Written answers are read by DICT staff.</p>
+            <p class="field-hint">
+                <span id="{{ $key }}-count" data-counter-for="{{ $key }}">
+                    {{ $question['max_length'] ?? 240 }} characters maximum.
+                </span>
+                Written answers are read by DICT staff.
+            </p>
         </div>
     @endif
 </div>

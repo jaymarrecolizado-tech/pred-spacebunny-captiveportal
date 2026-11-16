@@ -52,6 +52,8 @@ class SurveyReportController extends Controller
             // Who answered.
             'byGender' => $summary['by_gender'],
             'bySector' => $summary['by_sector'],
+            // How people felt about the service overall.
+            'byFeedback' => $summary['by_feedback'],
             // Comments grouped by location.
             'commentsBySite' => $summary['comments_by_site'],
             // Free-text answers, printed before the response table.

@@ -46,7 +46,7 @@
         </div>
 
         @foreach ($resolved->version->questions() as $question)
-            @include('public.question', ['question' => $question])
+            @include('public.question', ['question' => $question, 'allQuestions' => $resolved->version->questions()])
         @endforeach
 
         {{-- Pinned to the bottom of the screen on a phone so the answer is never

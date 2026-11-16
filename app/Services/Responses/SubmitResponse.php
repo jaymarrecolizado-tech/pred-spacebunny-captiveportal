@@ -67,6 +67,9 @@ class SubmitResponse
             // group by them without reading the answers blob.
             'gender' => $this->reportedAs($resolved->version, $clean, 'gender'),
             'sector' => $this->reportedAs($resolved->version, $clean, 'sector'),
+            // The experience dropdown, in a column of its own for the same
+            // reason: it is the answer the report counts.
+            'feedback' => $this->reportedAs($resolved->version, $clean, 'feedback'),
             'submitted_at' => now(),
             'created_at' => now(),
         ]));
@@ -110,7 +113,7 @@ class SubmitResponse
 
             $clean[$key] = match ($type) {
                 'rating' => $this->validateRating($key, $question, $value),
-                'single_choice' => $this->validateChoice($key, $question, $value),
+                'single_choice', 'dropdown' => $this->validateChoice($key, $question, $value),
                 'short_text' => $this->validateText($key, $question, $value),
                 default => throw ValidationException::withMessages([
                     "answers.$key" => 'Unsupported question type.',
